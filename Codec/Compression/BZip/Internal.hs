@@ -117,8 +117,7 @@ compressFull blockSize verbosity workFactor (LPS chunks) =
     outputBufferFull' <- Stream.outputBufferFull
     assert(not outputBufferFull'
        && (null inChunks || not inputBufferEmpty')) $ return ()
-    -- this invariant guarantees we can't get BufferError since
-    -- we can always make forward progress
+    -- this invariant guarantees we can always make forward progress
 
     let action = if null inChunks then Stream.Finish else Stream.Run
     status <- Stream.compress action
@@ -204,8 +203,8 @@ decompressFull verbosity memLevel (LPS chunks) =
     outputBufferFull' <- Stream.outputBufferFull
     assert(not outputBufferFull'
        && (null inChunks || not inputBufferEmpty')) $ return ()
-    -- this invariant guarantees we can't get a BufferError since
-    -- we can always make forward progress
+    -- this invariant guarantees we canalways make forward progress
+    -- or at least detect premature EOF
 
     status <- Stream.decompress
 
@@ -216,8 +215,11 @@ decompressFull verbosity memLevel (LPS chunks) =
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
                   outChunks <- Stream.unsafeInterleave (fillBuffers inChunks)
                   return (Base.PS outFPtr offset length : outChunks)
-          else do Stream.trace "output buffer not full, refilling"
-                  fillBuffers inChunks
+          else do -- We need to detect if we ran out of input:
+                  inputBufferEmpty <- Stream.inputBufferEmpty
+                  if inputBufferEmpty && null inChunks
+                    then fail "premature end of compressed stream"
+                    else fillBuffers inChunks
 
       Stream.StreamEnd -> do
         -- Note that there may be input bytes still available if the stream
