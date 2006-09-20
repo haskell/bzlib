@@ -476,7 +476,7 @@ instance Enum WorkFactor where
         | otherwise          = error "WorkFactor must be in the range 1..250"
 
 -- | The 'Verbosity' parameter is a number between 0 and 4. 0 is silent, and
--- greater numbers give increasingly verbose monitoring/debugging output.
+-- greater numbers give increasingly verbose monitoring\/debugging output.
 --
 data Verbosity = Silent        -- ^ No output. This is the default.
                | Verbosity Int -- ^ A specific level between 0 and 4.
