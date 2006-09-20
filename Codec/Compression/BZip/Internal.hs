@@ -22,6 +22,7 @@ module Codec.Compression.BZip.Internal (
   decompressFull,
   Stream.WorkFactor(..),
   Stream.MemoryLevel(..),
+  Stream.Verbosity(..),
 
   ) where
 
