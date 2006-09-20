@@ -365,8 +365,8 @@ instance Enum Status where
   toEnum other = error ("unexpected bzip2 status: " ++ show other)
 
 isFatalError :: CInt -> Bool
-isFatalError n | n >= 0                 = False
-isFatalError _                          = True
+isFatalError n | n >= 0 = False
+isFatalError _          = True
 
 throwError :: CInt -> Stream a
 throwError (#{const BZ_SEQUENCE_ERROR})
