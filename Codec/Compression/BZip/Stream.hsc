@@ -309,10 +309,10 @@ setOutAvail outLength = BZ $ \_stream inBuf outBuf outOffset _ -> do
 --
 
 trace :: String -> Stream ()
-trace _ = return () -- unsafeLiftIO . putStrLn
+trace = unsafeLiftIO . putStrLn
 
 dump :: Stream ()
-dump = return () {-do
+dump = do
   inNext  <- getInNext
   inAvail <- getInAvail
 
@@ -333,7 +333,7 @@ dump = return () {-do
     "}"
 
   consistencyCheck
--}
+
 consistencyCheck :: Stream ()
 consistencyCheck = do
 
@@ -355,7 +355,6 @@ data Status =
     Ok         -- ^ The requested action was completed successfully.
   | StreamEnd  -- ^ Compression of data was completed, or the logical stream
                --   end was detected during decompression.
-  deriving Show
 
 instance Enum Status where
   toEnum (#{const BZ_OK})         = Ok

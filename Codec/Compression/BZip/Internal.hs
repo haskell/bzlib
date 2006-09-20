@@ -84,8 +84,6 @@ compressFull blockSize verbosity workFactor (LPS chunks) =
    -> Stream [Strict.ByteString]
   fillBuffers inChunks = do
     Stream.consistencyCheck
-    Stream.trace "fillBuffers"
-    Stream.dump
 
     -- in this state there are two possabilities:
     --   * no outbut buffer space is available
@@ -98,28 +96,22 @@ compressFull blockSize verbosity workFactor (LPS chunks) =
     assert (inputBufferEmpty || outputBufferFull) $ return ()
 
     when outputBufferFull $ do
-      Stream.trace "no space in output buffer"
       outFPtr <- Stream.unsafeLiftIO (Base.mallocByteString outChunkSize)
       Stream.pushOutputBuffer outFPtr 0 outChunkSize
-      Stream.trace "pushed output buffer"
-      Stream.dump
 
     if inputBufferEmpty
       then case inChunks of
              [] -> drainBuffers []
              (Base.PS inFPtr offset length : inChunks') -> do
-                Stream.trace "no space in input buffer"
                 Stream.pushInputBuffer inFPtr offset length
-                Stream.trace "pushed input buffer"
-                Stream.dump
                 drainBuffers inChunks'
       else drainBuffers inChunks
+
 
   drainBuffers ::
       [Strict.ByteString]
    -> Stream [Strict.ByteString]
   drainBuffers inChunks = do
-    Stream.trace "drainBuffers"
 
     inputBufferEmpty' <- Stream.inputBufferEmpty
     outputBufferFull' <- Stream.outputBufferFull
@@ -131,37 +123,23 @@ compressFull blockSize verbosity workFactor (LPS chunks) =
     let action = if null inChunks then Stream.Finish else Stream.Run
     status <- Stream.compress action
 
-    Stream.trace $ "compress: status = " ++ show status
-    Stream.dump
-
     case status of
       Stream.Ok -> do
         outputBufferFull <- Stream.outputBufferFull
         if outputBufferFull
-          then do Stream.trace "whole output buffer available, poping buffer"
-                  (outFPtr, offset, length) <- Stream.popOutputBuffer
-                  Stream.trace "poped buffer"
-                  Stream.dump
-                  Stream.trace "suspend outChunks"
-                  outChunks <- Stream.unsafeInterleave (Stream.trace "force outChunks"
-                               >> fillBuffers inChunks)
-                  Stream.trace "return chunk"
+          then do (outFPtr, offset, length) <- Stream.popOutputBuffer
+                  outChunks <- Stream.unsafeInterleave (fillBuffers inChunks)
                   return (Base.PS outFPtr offset length : outChunks)
-          else do Stream.trace "output buffer not full, refilling"
-                  fillBuffers inChunks
+          else do fillBuffers inChunks
 
       Stream.StreamEnd -> do
         inputBufferEmpty <- Stream.inputBufferEmpty
         assert inputBufferEmpty $ return ()
         outputBufferBytesAvailable <- Stream.outputBufferBytesAvailable
         if outputBufferBytesAvailable > 0
-          then do Stream.trace "poping last partial buffer"
-                  Stream.dump
-                  (outFPtr, offset, length) <- Stream.popOutputBuffer
+          then do (outFPtr, offset, length) <- Stream.popOutputBuffer
                   return (Base.PS outFPtr offset length : [])
-          else do Stream.trace "no final buffer. Done!"
-                  Stream.dump
-                  return []
+          else do return []
 
 
 {-# NOINLINE decompressFull #-}
@@ -193,8 +171,6 @@ decompressFull verbosity memLevel (LPS chunks) =
       [Strict.ByteString]
    -> Stream [Strict.ByteString]
   fillBuffers inChunks = do
-    Stream.trace "fillBuffers"
-    Stream.dump
 
     -- in this state there are two possabilities:
     --   * no outbut buffer space is available
@@ -207,21 +183,14 @@ decompressFull verbosity memLevel (LPS chunks) =
     assert (inputBufferEmpty || outputBufferFull) $ return ()
 
     when outputBufferFull $ do
-      Stream.trace "no space in output buffer"
       outFPtr <- Stream.unsafeLiftIO (Base.mallocByteString outChunkSize)
       Stream.pushOutputBuffer outFPtr 0 outChunkSize
-      Stream.trace "pushed output buffer"
-      Stream.dump
 
     if inputBufferEmpty
       then case inChunks of
-             [] -> do Stream.trace "inChunks empty"
-                      drainBuffers []
+             [] -> drainBuffers []
              (Base.PS inFPtr offset length : inChunks') -> do
-                Stream.trace "no space in input buffer"
                 Stream.pushInputBuffer inFPtr offset length
-                Stream.trace "pushed input buffer"
-                Stream.dump
                 drainBuffers inChunks'
       else drainBuffers inChunks
 
@@ -230,7 +199,6 @@ decompressFull verbosity memLevel (LPS chunks) =
       [Strict.ByteString]
    -> Stream [Strict.ByteString]
   drainBuffers inChunks = do
-    Stream.trace "drainBuffers"
 
     inputBufferEmpty' <- Stream.inputBufferEmpty
     outputBufferFull' <- Stream.outputBufferFull
@@ -241,21 +209,12 @@ decompressFull verbosity memLevel (LPS chunks) =
 
     status <- Stream.decompress
 
-    Stream.trace $ "decompress: status = " ++ show status
-    Stream.dump
-
     case status of
       Stream.Ok -> do
         outputBufferFull <- Stream.outputBufferFull
         if outputBufferFull
-          then do Stream.trace "output buffer full, poping buffer"
-                  (outFPtr, offset, length) <- Stream.popOutputBuffer
-                  Stream.trace "poped buffer"
-                  Stream.dump
-                  Stream.trace "suspend outChunks"
-                  outChunks <- Stream.unsafeInterleave (Stream.trace "force outChunks"
-                              >> fillBuffers inChunks)
-                  Stream.trace "return chunk"
+          then do (outFPtr, offset, length) <- Stream.popOutputBuffer
+                  outChunks <- Stream.unsafeInterleave (fillBuffers inChunks)
                   return (Base.PS outFPtr offset length : outChunks)
           else do Stream.trace "output buffer not full, refilling"
                   fillBuffers inChunks
@@ -266,10 +225,6 @@ decompressFull verbosity memLevel (LPS chunks) =
         -- any trailing data.
         outputBufferBytesAvailable <- Stream.outputBufferBytesAvailable
         if outputBufferBytesAvailable > 0
-          then do Stream.trace "poping last partial buffer"
-                  Stream.dump
-                  (outFPtr, offset, length) <- Stream.popOutputBuffer
+          then do (outFPtr, offset, length) <- Stream.popOutputBuffer
                   return (Base.PS outFPtr offset length : [])
-          else do Stream.trace "no final buffer. Done!"
-                  Stream.dump
-                  return []
+          else do return []
