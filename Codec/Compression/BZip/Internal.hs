@@ -204,8 +204,8 @@ decompressFull verbosity memLevel (LPS chunks) =
     outputBufferFull' <- Stream.outputBufferFull
     assert(not outputBufferFull'
        && (null inChunks || not inputBufferEmpty')) $ return ()
-    -- this invariant guarantees we canalways make forward progress
-    -- or at least detect premature EOF
+    -- this invariant guarantees we can always make forward progress or at
+    -- least detect premature EOF
 
     status <- Stream.decompress
 
