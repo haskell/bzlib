@@ -138,8 +138,10 @@ compressFull blockSize verbosity workFactor (LPS chunks) =
         outputBufferBytesAvailable <- Stream.outputBufferBytesAvailable
         if outputBufferBytesAvailable > 0
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
+                  Stream.finalise
                   return (Base.PS outFPtr offset length : [])
-          else do return []
+          else do Stream.finalise
+                  return []
 
 
 {-# NOINLINE decompressFull #-}
@@ -229,5 +231,7 @@ decompressFull verbosity memLevel (LPS chunks) =
         outputBufferBytesAvailable <- Stream.outputBufferBytesAvailable
         if outputBufferBytesAvailable > 0
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
+                  Stream.finalise
                   return (Base.PS outFPtr offset length : [])
-          else do return []
+          else do Stream.finalise
+                  return []

@@ -17,6 +17,7 @@ module Codec.Compression.BZip.Stream (
   run,
   unsafeInterleave,
   unsafeLiftIO,
+  finalise,
 
   -- * Initialisation
   compressInit, 
@@ -213,7 +214,7 @@ instance Monad Stream where
 --  m >>= f = (m `thenZ` \a -> consistencyCheck `thenZ_` returnZ a) `thenZ` f
   (>>)   = thenZ_
   return = returnZ
-  fail   = failZ
+  fail   = (finalise >>) . failZ
 
 returnZ :: a -> Stream a
 returnZ a = BZ $ \_ inBuf outBuf outOffset outLength ->
@@ -547,19 +548,23 @@ decompress_ :: Stream Status
 decompress_ = do
   err <- withStreamPtr (\ptr -> bzDecompress ptr)
   if isFatalError err
-    then do
-      getStreamState >>= unsafeLiftIO . finalizeForeignPtr
-      throwError err
+    then throwError err
     else return (toEnum (fromIntegral err))
 
 compress_ :: Action -> Stream Status
 compress_ action = do
   err <- withStreamPtr (\ptr -> bzCompress ptr (fromIntegral (fromEnum action)))
   if isFatalError err
-    then do
-      getStreamState >>= unsafeLiftIO . finalizeForeignPtr
-      throwError err
+    then throwError err
     else return (toEnum (fromIntegral err))
+
+-- | This never needs to be used as the stream's resources will be released
+-- automatically when no longer needed, however this can be used to release
+-- them early. Only use this when you can guarantee that the stream will no
+-- longer be needed, for example if an error occurs or if the stream ends.
+--
+finalise :: Stream ()
+finalise = getStreamState >>= unsafeLiftIO . finalizeForeignPtr
 
 ----------------------
 -- The foreign imports
