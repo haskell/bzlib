@@ -30,7 +30,7 @@ module Codec.Compression.BZip (
   -- >
   -- > main = ByteString.interact BZip.compress
   --
-  -- Or you could lazily read in and decompresse @.bz2@ file using:
+  -- Or you could lazily read in and decompress a @.bz2@ file using:
   --
   -- > content <- fmap BZip.decompress (readFile file)
   --
