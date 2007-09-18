@@ -27,28 +27,27 @@ module Codec.Compression.BZip.Internal (
   ) where
 
 import Prelude hiding (length)
-import Control.Monad (liftM, when)
+import Control.Monad (when)
 import Control.Exception (assert)
-import qualified Data.ByteString.Lazy as Lazy
-import qualified Data.ByteString as Strict
-import qualified Data.ByteString.Base as Base
-import Data.ByteString.Base (LazyByteString(LPS))
+import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString.Lazy.Internal as L
+import qualified Data.ByteString.Internal as S
 
 import qualified Codec.Compression.BZip.Stream as Stream
 import Codec.Compression.BZip.Stream (Stream)
 
 compressDefault
   :: Stream.BlockSize
-  -> Lazy.ByteString
-  -> Lazy.ByteString
+  -> L.ByteString
+  -> L.ByteString
 compressDefault blockSize =
   compressFull blockSize
                Stream.Silent
                Stream.DefaultWorkFactor
 
 decompressDefault
-  :: Lazy.ByteString
-  -> Lazy.ByteString
+  :: L.ByteString
+  -> L.ByteString
 decompressDefault =
   decompressFull Stream.Silent
                  Stream.DefaultMemoryLevel
@@ -58,21 +57,20 @@ compressFull
   :: Stream.BlockSize
   -> Stream.Verbosity
   -> Stream.WorkFactor
-  -> Lazy.ByteString
-  -> Lazy.ByteString
-
-compressFull blockSize verbosity workFactor (LPS chunks) =
+  -> L.ByteString
+  -> L.ByteString
+compressFull blockSize verbosity workFactor chunks =
   Stream.run $ do
     Stream.compressInit blockSize verbosity workFactor
     case chunks of
-      [] -> liftM LPS (fillBuffers [])
-      (Base.PS inFPtr offset length : chunks') -> do
+      L.Empty -> fillBuffers L.Empty
+      L.Chunk (S.PS inFPtr offset length) chunks' -> do
         Stream.pushInputBuffer inFPtr offset length
-        liftM LPS (fillBuffers chunks')
+        fillBuffers chunks'
 
   where
   outChunkSize :: Int
-  outChunkSize = 32 * 1024 - 16
+  outChunkSize = 32 * 1024 - L.chunkOverhead
 
     -- we flick between two states:
     --   * where one or other buffer is empty
@@ -81,8 +79,8 @@ compressFull blockSize verbosity workFactor (LPS chunks) =
     --       - in which case we compress until a buffer is empty
 
   fillBuffers ::
-      [Strict.ByteString]
-   -> Stream [Strict.ByteString]
+      L.ByteString
+   -> Stream L.ByteString
   fillBuffers inChunks = do
     Stream.consistencyCheck
 
@@ -97,30 +95,30 @@ compressFull blockSize verbosity workFactor (LPS chunks) =
     assert (inputBufferEmpty || outputBufferFull) $ return ()
 
     when outputBufferFull $ do
-      outFPtr <- Stream.unsafeLiftIO (Base.mallocByteString outChunkSize)
+      outFPtr <- Stream.unsafeLiftIO (S.mallocByteString outChunkSize)
       Stream.pushOutputBuffer outFPtr 0 outChunkSize
 
     if inputBufferEmpty
       then case inChunks of
-             [] -> drainBuffers []
-             (Base.PS inFPtr offset length : inChunks') -> do
+             L.Empty -> drainBuffers L.Empty
+             L.Chunk (S.PS inFPtr offset length) inChunks' -> do
                 Stream.pushInputBuffer inFPtr offset length
                 drainBuffers inChunks'
       else drainBuffers inChunks
 
 
   drainBuffers ::
-      [Strict.ByteString]
-   -> Stream [Strict.ByteString]
+      L.ByteString
+   -> Stream L.ByteString
   drainBuffers inChunks = do
 
     inputBufferEmpty' <- Stream.inputBufferEmpty
     outputBufferFull' <- Stream.outputBufferFull
     assert(not outputBufferFull'
-       && (null inChunks || not inputBufferEmpty')) $ return ()
+       && (L.null inChunks || not inputBufferEmpty')) $ return ()
     -- this invariant guarantees we can always make forward progress
 
-    let action = if null inChunks then Stream.Finish else Stream.Run
+    let action = if L.null inChunks then Stream.Finish else Stream.Run
     status <- Stream.compress action
 
     case status of
@@ -129,7 +127,7 @@ compressFull blockSize verbosity workFactor (LPS chunks) =
         if outputBufferFull
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
                   outChunks <- Stream.unsafeInterleave (fillBuffers inChunks)
-                  return (Base.PS outFPtr offset length : outChunks)
+                  return (L.Chunk (S.PS outFPtr offset length) outChunks)
           else do fillBuffers inChunks
 
       Stream.StreamEnd -> do
@@ -139,29 +137,29 @@ compressFull blockSize verbosity workFactor (LPS chunks) =
         if outputBufferBytesAvailable > 0
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
                   Stream.finalise
-                  return (Base.PS outFPtr offset length : [])
+                  return (L.Chunk (S.PS outFPtr offset length) L.Empty)
           else do Stream.finalise
-                  return []
+                  return L.Empty
 
 
 {-# NOINLINE decompressFull #-}
 decompressFull
   :: Stream.Verbosity
   -> Stream.MemoryLevel
-  -> Lazy.ByteString
-  -> Lazy.ByteString
-decompressFull verbosity memLevel (LPS chunks) =
+  -> L.ByteString
+  -> L.ByteString
+decompressFull verbosity memLevel chunks =
   Stream.run $ do
     Stream.decompressInit verbosity memLevel
     case chunks of
-      [] -> liftM LPS (fillBuffers [])
-      (Base.PS inFPtr offset length : chunks') -> do
+      L.Empty -> fillBuffers L.Empty
+      L.Chunk (S.PS inFPtr offset length) chunks' -> do
         Stream.pushInputBuffer inFPtr offset length
-        liftM LPS (fillBuffers chunks')
+        fillBuffers chunks'
 
   where
   outChunkSize :: Int
-  outChunkSize = 32 * 1024 - 16
+  outChunkSize = 32 * 1024 - L.chunkOverhead
 
     -- we flick between two states:
     --   * where one or other buffer is empty
@@ -170,8 +168,8 @@ decompressFull verbosity memLevel (LPS chunks) =
     --       - in which case we compress until a buffer is empty
 
   fillBuffers ::
-      [Strict.ByteString]
-   -> Stream [Strict.ByteString]
+      L.ByteString
+   -> Stream L.ByteString
   fillBuffers inChunks = do
 
     -- in this state there are two possabilities:
@@ -185,27 +183,27 @@ decompressFull verbosity memLevel (LPS chunks) =
     assert (inputBufferEmpty || outputBufferFull) $ return ()
 
     when outputBufferFull $ do
-      outFPtr <- Stream.unsafeLiftIO (Base.mallocByteString outChunkSize)
+      outFPtr <- Stream.unsafeLiftIO (S.mallocByteString outChunkSize)
       Stream.pushOutputBuffer outFPtr 0 outChunkSize
 
     if inputBufferEmpty
       then case inChunks of
-             [] -> drainBuffers []
-             (Base.PS inFPtr offset length : inChunks') -> do
+             L.Empty -> drainBuffers L.Empty
+             L.Chunk (S.PS inFPtr offset length) inChunks' -> do
                 Stream.pushInputBuffer inFPtr offset length
                 drainBuffers inChunks'
       else drainBuffers inChunks
 
 
   drainBuffers ::
-      [Strict.ByteString]
-   -> Stream [Strict.ByteString]
+      L.ByteString
+   -> Stream L.ByteString
   drainBuffers inChunks = do
 
     inputBufferEmpty' <- Stream.inputBufferEmpty
     outputBufferFull' <- Stream.outputBufferFull
     assert(not outputBufferFull'
-       && (null inChunks || not inputBufferEmpty')) $ return ()
+       && (L.null inChunks || not inputBufferEmpty')) $ return ()
     -- this invariant guarantees we can always make forward progress or at
     -- least detect premature EOF
 
@@ -217,10 +215,10 @@ decompressFull verbosity memLevel (LPS chunks) =
         if outputBufferFull
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
                   outChunks <- Stream.unsafeInterleave (fillBuffers inChunks)
-                  return (Base.PS outFPtr offset length : outChunks)
+                  return (L.Chunk (S.PS outFPtr offset length) outChunks)
           else do -- We need to detect if we ran out of input:
                   inputBufferEmpty <- Stream.inputBufferEmpty
-                  if inputBufferEmpty && null inChunks
+                  if inputBufferEmpty && L.null inChunks
                     then fail "premature end of compressed stream"
                     else fillBuffers inChunks
 
@@ -232,6 +230,6 @@ decompressFull verbosity memLevel (LPS chunks) =
         if outputBufferBytesAvailable > 0
           then do (outFPtr, offset, length) <- Stream.popOutputBuffer
                   Stream.finalise
-                  return (Base.PS outFPtr offset length : [])
+                  return (L.Chunk (S.PS outFPtr offset length) L.Empty)
           else do Stream.finalise
-                  return []
+                  return L.Empty
