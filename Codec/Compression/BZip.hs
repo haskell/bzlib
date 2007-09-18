@@ -4,7 +4,7 @@
 -- License     :  BSD-style
 --
 -- Maintainer  :  duncan.coutts@worc.ox.ac.uk
--- Stability   :  experimental
+-- Stability   :  provisional
 -- Portability :  portable (H98 + FFI)
 --
 -- Compression and decompression of data streams in the bzip2 format.

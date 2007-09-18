@@ -1,15 +1,18 @@
-name:           bzlib
-version:        0.3
-copyright:      (c) 2006 Duncan Coutts
-build-depends:  base
-license:        BSD3
-author:         Duncan Coutts <duncan.coutts@worc.ox.ac.uk>
-maintainer:     Duncan Coutts <duncan.coutts@worc.ox.ac.uk>
-synopsis:       Compression and decompression in the bzip2 format
+name:            bzlib
+version:         0.4
+copyright:       (c) 2006-2007 Duncan Coutts
+build-depends:   base, bytestring >= 0.9
+license:         BSD3
+license-file:    LICENSE
+author:          Duncan Coutts <duncan@haskell.org>
+maintainer:      Duncan Coutts <duncan@haskell.org>
+synopsis:        Compression and decompression in the bzip2 format
+stability:       provisional
+build-type:      Simple
 exposed-modules: Codec.Compression.BZip,
                  Codec.Compression.BZip.Internal
-other-modules: Codec.Compression.BZip.Stream
-extensions:     ForeignFunctionInterface
-includes: bzlib.h
+other-modules:   Codec.Compression.BZip.Stream
+extensions:      ForeignFunctionInterface
+includes:        bzlib.h
 extra-libraries: bz2
-ghc-options: -fvia-C -Wall
+ghc-options:     -fvia-C -Wall
