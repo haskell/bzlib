@@ -1,7 +1,6 @@
 name:            bzlib
 version:         0.4
 copyright:       (c) 2006-2007 Duncan Coutts
-build-depends:   base, bytestring >= 0.9
 license:         BSD3
 license-file:    LICENSE
 author:          Duncan Coutts <duncan@haskell.org>
@@ -9,10 +8,22 @@ maintainer:      Duncan Coutts <duncan@haskell.org>
 synopsis:        Compression and decompression in the bzip2 format
 stability:       provisional
 build-type:      Simple
-exposed-modules: Codec.Compression.BZip,
-                 Codec.Compression.BZip.Internal
-other-modules:   Codec.Compression.BZip.Stream
-extensions:      ForeignFunctionInterface
-includes:        bzlib.h
-extra-libraries: bz2
-ghc-options:     -fvia-C -Wall
+
+cabal-version:   >= 1.2
+
+flag bytestring_in_base
+
+library
+  exposed-modules: Codec.Compression.BZip,
+                   Codec.Compression.BZip.Internal
+  other-modules:   Codec.Compression.BZip.Stream
+  if flag(bytestring_in_base)
+    -- bytestring was in base-2.0 and 2.1.1
+    build-depends: base >= 2.0 && < 2.2
+    ghc-options: -DBYTESTRING_IN_BASE
+  else
+    build-depends: base < 2.0 || >= 2.2, bytestring >= 0.9
+  extensions:      CPP, ForeignFunctionInterface
+  includes:        bzlib.h
+  extra-libraries: bz2
+  ghc-options:     -fvia-C -Wall
