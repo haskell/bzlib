@@ -56,7 +56,11 @@ module Codec.Compression.BZip.Stream (
 
 import Foreign
 import Foreign.C
+#ifdef BYTESTRING_IN_BASE
 import Data.ByteString.Base
+#else
+import Data.ByteString.Internal
+#endif
 import System.IO.Unsafe (unsafeInterleaveIO)
 import System.IO (hPutStrLn, stderr)
 import Control.Monad (liftM)
