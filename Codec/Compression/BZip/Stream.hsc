@@ -370,25 +370,21 @@ instance Enum Status where
   toEnum (#{const BZ_STREAM_END}) = StreamEnd
   toEnum other = error ("unexpected bzip2 status: " ++ show other)
 
-isFatalError :: CInt -> Bool
-isFatalError n | n >= 0 = False
-isFatalError _          = True
+failIfError :: CInt -> Stream ()
+failIfError errno
+  | errno >= 0 = return ()
+  | otherwise  = fail (getErrorMessage errno)
 
-throwError :: CInt -> Stream a
-throwError (#{const BZ_SEQUENCE_ERROR})
-  = fail "incorrect sequence of calls"
-throwError (#{const BZ_PARAM_ERROR})
-  = fail "incorrect parameter"
-throwError (#{const BZ_MEM_ERROR})
-  = fail "not enough memory"
-throwError (#{const BZ_DATA_ERROR})
-  = fail "compressed data stream is corrupt"
-throwError (#{const BZ_DATA_ERROR_MAGIC})
-  = fail "data stream is not a bzip2 file"
-throwError (#{const BZ_CONFIG_ERROR})
-  = fail "configuration error in bzip2 lib"
-throwError other
-  = fail ("unknown or impossible error code: " ++ show other)
+getErrorMessage :: CInt -> String
+getErrorMessage errno = case errno of
+ #{const BZ_SEQUENCE_ERROR}   -> "incorrect sequence of calls"
+ #{const BZ_PARAM_ERROR}      -> "incorrect parameter"
+ #{const BZ_MEM_ERROR}        -> "not enough memory"
+ #{const BZ_DATA_ERROR}       -> "compressed data stream is corrupt"
+ #{const BZ_DATA_ERROR_MAGIC} -> "data stream is not a bzip2 file"
+ #{const BZ_CONFIG_ERROR}     -> "configuration error in bzip2 lib"
+ other                        -> "unknown or impossible error code: "
+                              ++ show other
 
 data Action =
     Run
@@ -532,10 +528,8 @@ decompressInit verbosity memoryLevel = do
     bzDecompressInit ptr
       (fromIntegral (fromEnum verbosity))
       (fromIntegral (fromEnum memoryLevel))
-  if isFatalError err
-    then throwError err
-    else do stream <- getStreamState
-            unsafeLiftIO $ addForeignPtrFinalizer bzDecompressEnd stream
+  failIfError err
+  getStreamState >>= unsafeLiftIO . addForeignPtrFinalizer bzDecompressEnd
 
 compressInit :: BlockSize -> Verbosity -> WorkFactor -> Stream ()
 compressInit blockSize verbosity workFactor = do
@@ -544,24 +538,20 @@ compressInit blockSize verbosity workFactor = do
       (fromIntegral (fromEnum blockSize))
       (fromIntegral (fromEnum verbosity))
       (fromIntegral (fromEnum workFactor))
-  if isFatalError err
-    then throwError err
-    else do stream <- getStreamState
-            unsafeLiftIO $ addForeignPtrFinalizer bzCompressEnd stream
+  failIfError err
+  getStreamState >>= unsafeLiftIO . addForeignPtrFinalizer bzCompressEnd
 
 decompress_ :: Stream Status
 decompress_ = do
   err <- withStreamPtr (\ptr -> bzDecompress ptr)
-  if isFatalError err
-    then throwError err
-    else return (toEnum (fromIntegral err))
+  failIfError err
+  return (toEnum (fromIntegral err))
 
 compress_ :: Action -> Stream Status
 compress_ action = do
   err <- withStreamPtr (\ptr -> bzCompress ptr (fromIntegral (fromEnum action)))
-  if isFatalError err
-    then throwError err
-    else return (toEnum (fromIntegral err))
+  failIfError err
+  return (toEnum (fromIntegral err))
 
 -- | This never needs to be used as the stream's resources will be released
 -- automatically when no longer needed, however this can be used to release
