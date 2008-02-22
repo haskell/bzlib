@@ -5,7 +5,16 @@ license:         BSD3
 license-file:    LICENSE
 author:          Duncan Coutts <duncan@haskell.org>
 maintainer:      Duncan Coutts <duncan@haskell.org>
+category:        Codec
 synopsis:        Compression and decompression in the bzip2 format
+description:     This package provides a pure interface for compressing and 
+                 decompressing streams of data represented as lazy 
+                 'ByteString's. It uses the bz2 C library so it has high
+                 performance.
+                 .
+                 It provides a convenient high level api suitable for most
+                 tasks and for the few cases where more control is needed it
+                 provides access to the full bzip2 feature set.
 stability:       provisional
 build-type:      Simple
 cabal-version:   >= 1.2.1
@@ -29,7 +38,7 @@ library
   includes:        bzlib.h
   ghc-options:     -Wall
   if !os(windows)
-    -- Normally we use the the standard system zlib:
+    -- Normally we use the the standard system bz2 lib:
     extra-libraries: bz2
   else
     -- However for the benefit of users of Windows (which does not have zlib
