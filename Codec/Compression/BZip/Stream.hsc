@@ -494,6 +494,11 @@ withStreamPtr f = do
   stream <- getStreamState
   unsafeLiftIO (withForeignPtr stream f)
 
+withStreamState :: (StreamState -> IO a) -> Stream a
+withStreamState f = do
+  stream <- getStreamState
+  unsafeLiftIO (withForeignPtr stream (f . StreamState))
+
 setInAvail :: Int -> Stream ()
 setInAvail val = withStreamPtr $ \ptr ->
   #{poke bz_stream, avail_in} ptr (fromIntegral val :: CUInt)
@@ -524,8 +529,8 @@ getOutNext = withStreamPtr (#{peek bz_stream, next_out})
 
 decompressInit :: Verbosity -> MemoryLevel -> Stream ()
 decompressInit verbosity memoryLevel = do
-  err <- withStreamPtr $ \ptr ->
-    bzDecompressInit ptr
+  err <- withStreamState $ \bzstream ->
+    bzDecompressInit bzstream
       (fromIntegral (fromEnum verbosity))
       (fromIntegral (fromEnum memoryLevel))
   failIfError err
@@ -533,8 +538,8 @@ decompressInit verbosity memoryLevel = do
 
 compressInit :: BlockSize -> Verbosity -> WorkFactor -> Stream ()
 compressInit blockSize verbosity workFactor = do
-  err <- withStreamPtr $ \ptr ->
-    bzCompressInit ptr
+  err <- withStreamState $ \bzstream ->
+    bzCompressInit bzstream
       (fromIntegral (fromEnum blockSize))
       (fromIntegral (fromEnum verbosity))
       (fromIntegral (fromEnum workFactor))
@@ -543,13 +548,15 @@ compressInit blockSize verbosity workFactor = do
 
 decompress_ :: Stream Status
 decompress_ = do
-  err <- withStreamPtr (\ptr -> bzDecompress ptr)
+  err <- withStreamState $ \bzstream ->
+    bzDecompress bzstream
   failIfError err
   return (toEnum (fromIntegral err))
 
 compress_ :: Action -> Stream Status
 compress_ action = do
-  err <- withStreamPtr (\ptr -> bzCompress ptr (fromIntegral (fromEnum action)))
+  err <- withStreamState $ \bzstream ->
+    bzCompress bzstream (fromIntegral (fromEnum action))
   failIfError err
   return (toEnum (fromIntegral err))
 
@@ -564,23 +571,23 @@ finalise = getStreamState >>= unsafeLiftIO . finalizeForeignPtr
 ----------------------
 -- The foreign imports
 
-data StreamState = StreamState ()
+newtype StreamState = StreamState (Ptr StreamState)
 
 foreign import ccall unsafe "bzlib.h BZ2_bzDecompressInit"
-  bzDecompressInit :: Ptr StreamState -> CInt -> CInt -> IO CInt
+  bzDecompressInit :: StreamState -> CInt -> CInt -> IO CInt
 
 foreign import ccall unsafe "bzlib.h BZ2_bzDecompress"
-  bzDecompress :: Ptr StreamState -> IO CInt
+  bzDecompress :: StreamState -> IO CInt
 
 foreign import ccall unsafe "bzlib.h &BZ2_bzDecompressEnd"
   bzDecompressEnd :: FinalizerPtr StreamState
 
 
 foreign import ccall unsafe "bzlib.h BZ2_bzCompressInit"
-  bzCompressInit :: Ptr StreamState -> CInt -> CInt -> CInt -> IO CInt
+  bzCompressInit :: StreamState -> CInt -> CInt -> CInt -> IO CInt
 
 foreign import ccall unsafe "bzlib.h BZ2_bzCompress"
-  bzCompress :: Ptr StreamState -> CInt -> IO CInt
+  bzCompress :: StreamState -> CInt -> IO CInt
 
 foreign import ccall unsafe "bzlib.h &BZ2_bzCompressEnd"
   bzCompressEnd :: FinalizerPtr StreamState
