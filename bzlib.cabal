@@ -19,6 +19,8 @@ stability:       provisional
 build-type:      Simple
 cabal-version:   >= 1.2.1
 extra-source-files: cbits/bzlib_private.h
+                    -- demo programs:
+                    bzip2.hs bunzip2.hs
 
 flag bytestring-in-base
   description: In the ghc-6.6 era the bytestring modules were
