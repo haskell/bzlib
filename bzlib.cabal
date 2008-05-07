@@ -1,5 +1,5 @@
 name:            bzlib
-version:         0.4.0.3
+version:         0.4.0.4
 copyright:       (c) 2006-2008 Duncan Coutts
 license:         BSD3
 license-file:    LICENSE
@@ -44,7 +44,7 @@ library
     extra-libraries: bz2
   else
     -- However for the benefit of users of Windows (which does not have zlib
-    -- by default) we bundle a complete copy of the C sources of bzip2-1.0.4
+    -- by default) we bundle a complete copy of the C sources of bzip2-1.0.5
     c-sources:     cbits/blocksort.c cbits/bzlib.c cbits/compress.c
                    cbits/crctable.c cbits/decompress.c cbits/huffman.c
                    cbits/randtable.c
