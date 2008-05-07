@@ -56,11 +56,16 @@ module Codec.Compression.BZip.Stream (
   ) where
 
 import Foreign
+         ( Word8, Ptr, nullPtr, plusPtr, peekByteOff, pokeByteOff, mallocBytes
+         , ForeignPtr, FinalizerPtr, newForeignPtr_, addForeignPtrFinalizer
+         , finalizeForeignPtr, withForeignPtr, touchForeignPtr
+         , unsafeForeignPtrToPtr, unsafePerformIO )
 import Foreign.C
+         ( CInt, CUInt )
 #ifdef BYTESTRING_IN_BASE
-import Data.ByteString.Base
+import Data.ByteString.Base (nullForeignPtr)
 #else
-import Data.ByteString.Internal
+import Data.ByteString.Internal (nullForeignPtr)
 #endif
 import System.IO.Unsafe (unsafeInterleaveIO)
 import System.IO (hPutStrLn, stderr)
