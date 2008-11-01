@@ -1,5 +1,4 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
-{-# OPTIONS_GHC -fno-warn-missing-methods #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (c) 2006-2008 Duncan Coutts
@@ -369,13 +368,13 @@ data Status =
   | StreamEnd  -- ^ Compression of data was completed, or the logical stream
                --   end was detected during decompression.
 
-instance Enum Status where
-  toEnum (#{const BZ_OK})         = Ok
-  toEnum (#{const BZ_RUN_OK})     = Ok
-  toEnum (#{const BZ_FLUSH_OK})   = Ok
-  toEnum (#{const BZ_FINISH_OK})  = Ok
-  toEnum (#{const BZ_STREAM_END}) = StreamEnd
-  toEnum other = error ("unexpected bzip2 status: " ++ show other)
+toStatus :: CInt -> Status
+toStatus (#{const BZ_OK})         = Ok
+toStatus (#{const BZ_RUN_OK})     = Ok
+toStatus (#{const BZ_FLUSH_OK})   = Ok
+toStatus (#{const BZ_FINISH_OK})  = Ok
+toStatus (#{const BZ_STREAM_END}) = StreamEnd
+toStatus other = error ("unexpected bzip2 status: " ++ show other)
 
 failIfError :: CInt -> Stream ()
 failIfError errno
@@ -398,10 +397,10 @@ data Action =
   | Flush
   | Finish
 
-instance Enum Action where
-  fromEnum Run    = #{const BZ_RUN}
-  fromEnum Flush  = #{const BZ_FLUSH}
-  fromEnum Finish = #{const BZ_FINISH}
+fromAction :: Action -> CInt
+fromAction Run    = #{const BZ_RUN}
+fromAction Flush  = #{const BZ_FLUSH}
+fromAction Finish = #{const BZ_FINISH}
 
 -- | The block size affects both the compression ratio achieved, and the amount
 -- of memory needed for compression and decompression.
@@ -435,11 +434,11 @@ data BlockSize =
     DefaultBlockSize -- ^ The default block size is also the maximum.
   | BlockSize Int    -- ^ A specific block size between 1 and 9.
 
-instance Enum BlockSize where
-  fromEnum DefaultBlockSize = 9
-  fromEnum (BlockSize n)
-         | n >= 1 && n <= 9 = n
-         | otherwise        = error "BlockSize must be in the range 1..9"
+fromBlockSize :: BlockSize -> CInt
+fromBlockSize DefaultBlockSize = 9
+fromBlockSize (BlockSize n)
+            | n >= 1 && n <= 9 = fromIntegral n
+            | otherwise        = error "BlockSize must be in the range 1..9"
 
 -- | For files compressed with the default 900k block size, decompression will
 -- require about 3700k to decompress. To support decompression of any file in
@@ -453,9 +452,9 @@ data MemoryLevel =
                        --   halves the memory needed but also halves the
                        --   decompression speed.
 
-instance Enum MemoryLevel where
-  fromEnum DefaultMemoryLevel = 0
-  fromEnum MinMemoryLevel     = 1
+fromMemoryLevel :: MemoryLevel -> CInt
+fromMemoryLevel DefaultMemoryLevel = 0
+fromMemoryLevel MinMemoryLevel     = 1
 
 -- | The 'WorkFactor' parameter controls how the compression phase behaves when
 -- presented with worst case, highly repetitive, input data. If compression
@@ -478,11 +477,11 @@ data WorkFactor =
     DefaultWorkFactor -- ^ The default work factor is 30.
   | WorkFactor Int    -- ^ Allowable values range from 1 to 250 inclusive.
 
-instance Enum WorkFactor where
-  fromEnum DefaultWorkFactor = 0
-  fromEnum (WorkFactor n)
-        | n >= 1 && n <= 250 = n
-        | otherwise          = error "WorkFactor must be in the range 1..250"
+fromWorkFactor :: WorkFactor -> CInt
+fromWorkFactor DefaultWorkFactor = 0
+fromWorkFactor (WorkFactor n)
+      | n >= 1 && n <= 250 = fromIntegral n
+      | otherwise          = error "WorkFactor must be in the range 1..250"
 
 -- | The 'Verbosity' parameter is a number between 0 and 4. 0 is silent, and
 -- greater numbers give increasingly verbose monitoring\/debugging output.
@@ -490,11 +489,11 @@ instance Enum WorkFactor where
 data Verbosity = Silent        -- ^ No output. This is the default.
                | Verbosity Int -- ^ A specific level between 0 and 4.
 
-instance Enum Verbosity where
-  fromEnum Silent = 0
-  fromEnum (Verbosity n)
-      | n >= 0 && n <= 4 = n
-      | otherwise        = error "Verbosity must be in the range 0..4"
+fromVerbosity :: Verbosity -> CInt
+fromVerbosity Silent        = 0
+fromVerbosity (Verbosity n)
+         | n >= 0 && n <= 4 = fromIntegral n
+         | otherwise        = error "Verbosity must be in the range 0..4"
 
 withStreamPtr :: (Ptr StreamState -> IO a) -> Stream a
 withStreamPtr f = do
@@ -538,8 +537,8 @@ decompressInit :: Verbosity -> MemoryLevel -> Stream ()
 decompressInit verbosity memoryLevel = do
   err <- withStreamState $ \bzstream ->
     bzDecompressInit bzstream
-      (fromIntegral (fromEnum verbosity))
-      (fromIntegral (fromEnum memoryLevel))
+      (fromVerbosity verbosity)
+      (fromMemoryLevel memoryLevel)
   failIfError err
   getStreamState >>= unsafeLiftIO . addForeignPtrFinalizer bzDecompressEnd
 
@@ -547,9 +546,9 @@ compressInit :: BlockSize -> Verbosity -> WorkFactor -> Stream ()
 compressInit blockSize verbosity workFactor = do
   err <- withStreamState $ \bzstream ->
     bzCompressInit bzstream
-      (fromIntegral (fromEnum blockSize))
-      (fromIntegral (fromEnum verbosity))
-      (fromIntegral (fromEnum workFactor))
+      (fromBlockSize blockSize)
+      (fromVerbosity verbosity)
+      (fromWorkFactor workFactor)
   failIfError err
   getStreamState >>= unsafeLiftIO . addForeignPtrFinalizer bzCompressEnd
 
@@ -558,14 +557,14 @@ decompress_ = do
   err <- withStreamState $ \bzstream ->
     bzDecompress bzstream
   failIfError err
-  return (toEnum (fromIntegral err))
+  return (toStatus err)
 
 compress_ :: Action -> Stream Status
 compress_ action = do
   err <- withStreamState $ \bzstream ->
-    bzCompress bzstream (fromIntegral (fromEnum action))
+    bzCompress bzstream (fromAction action)
   failIfError err
-  return (toEnum (fromIntegral err))
+  return (toStatus err)
 
 -- | This never needs to be used as the stream's resources will be released
 -- automatically when no longer needed, however this can be used to release
