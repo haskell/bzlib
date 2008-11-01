@@ -20,8 +20,8 @@
 module Codec.Compression.BZip (
 
   -- | This module provides pure functions for compressing and decompressing
-  -- streams of data represented by lazy 'ByteString's. This makes it easy to
-  -- use either in memory or with disk or network IO.
+  -- streams of data in the bzip2 format represented by lazy 'ByteString's.
+  -- This makes it easy to use either in memory or with disk or network IO.
   --
   -- For example a simple bzip compression program is just:
   --
@@ -35,19 +35,28 @@ module Codec.Compression.BZip (
   -- > content <- fmap BZip.decompress (readFile file)
   --
 
-  -- * Compression
+  -- * Simple compression and decompression
   compress,
-  compressWith,
-  BlockSize(..),
+  decompress,
 
-  -- * Decompression
-  decompress
+  -- * Extended api with control over compression parameters
+  compressWith,
+  decompressWith,
+
+  CompressParams(..), defaultCompressParams,
+  DecompressParams(..), defaultDecompressParams,
+
+  -- ** The compression parameter types
+  BlockSize(..),
+  WorkFactor(..),
+  MemoryLevel(..),
 
   ) where
 
 import Data.ByteString.Lazy (ByteString)
 
-import Codec.Compression.BZip.Internal as Internal
+import qualified Codec.Compression.BZip.Internal as Internal
+import Codec.Compression.BZip.Internal hiding (compress, decompress)
 
 
 -- | Decompress a stream of data in the bzip2 format.
@@ -68,7 +77,16 @@ import Codec.Compression.BZip.Internal as Internal
 -- stream before doing any IO action that depends on it.
 --
 decompress :: ByteString -> ByteString
-decompress = Internal.decompressDefault
+decompress = Internal.decompress defaultDecompressParams
+
+
+-- | Like 'decompress' but with the ability to specify various decompression
+-- parameters. Typical usage:
+--
+-- > decompressWith defaultCompressParams { ... }
+--
+decompressWith :: DecompressParams -> ByteString -> ByteString
+decompressWith = Internal.decompress
 
 
 -- | Compress a stream of data into the bzip2 format.
@@ -78,11 +96,17 @@ decompress = Internal.decompressDefault
 -- the compression block size.
 --
 compress :: ByteString -> ByteString
-compress = Internal.compressDefault DefaultBlockSize
+compress = Internal.compress defaultCompressParams
 
 
--- | Like 'compress' but with an extra parameter to specify the block size
--- used for compression.
+-- | Like 'compress' but with the ability to specify compression parameters.
+-- Typical usage:
 --
-compressWith :: BlockSize -> ByteString -> ByteString
-compressWith = Internal.compressDefault
+-- > compressWith defaultCompressParams { ... }
+--
+-- In particular you can set the compression block size:
+--
+-- > compressWith defaultCompressParams { compressBlockSize = BlockSize 1 }
+--
+compressWith :: CompressParams -> ByteString -> ByteString
+compressWith = Internal.compress
