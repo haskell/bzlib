@@ -12,7 +12,7 @@ description:     This package provides a pure interface for compressing and
                  'ByteString's. It uses the bz2 C library so it has high
                  performance.
                  .
-                 It provides a convenient high level api suitable for most
+                 It provides a convenient high level API suitable for most
                  tasks and for the few cases where more control is needed it
                  provides access to the full bzip2 feature set.
 stability:       provisional
