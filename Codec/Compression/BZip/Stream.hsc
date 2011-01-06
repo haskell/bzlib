@@ -62,11 +62,7 @@ import Foreign
          , unsafeForeignPtrToPtr, unsafePerformIO )
 import Foreign.C
          ( CInt, CUInt )
-#ifdef BYTESTRING_IN_BASE
-import Data.ByteString.Base (nullForeignPtr)
-#else
 import Data.ByteString.Internal (nullForeignPtr)
-#endif
 import System.IO.Unsafe (unsafeInterleaveIO)
 import System.IO (hPutStrLn, stderr)
 import Control.Monad (liftM)

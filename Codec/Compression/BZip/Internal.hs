@@ -33,12 +33,8 @@ import Prelude hiding (length)
 import Control.Monad (when)
 import Control.Exception (assert)
 import qualified Data.ByteString.Lazy as L
-#ifdef BYTESTRING_IN_BASE
-import qualified Data.ByteString.Base as S
-#else
 import qualified Data.ByteString.Lazy.Internal as L
 import qualified Data.ByteString.Internal as S
-#endif
 
 import qualified Codec.Compression.BZip.Stream as Stream
 import Codec.Compression.BZip.Stream (Stream)
@@ -106,13 +102,8 @@ defaultDecompressParams = DecompressParams {
 -- are 16k and 32k respectively (less a small accounting overhead).
 --
 defaultCompressBufferSize, defaultDecompressBufferSize :: Int
-#ifdef BYTESTRING_IN_BASE
-defaultCompressBufferSize   = 16 * 1024 - 16
-defaultDecompressBufferSize = 32 * 1024 - 16
-#else
 defaultCompressBufferSize   = 16 * 1024 - L.chunkOverhead
 defaultDecompressBufferSize = 32 * 1024 - L.chunkOverhead
-#endif
 
 {-# NOINLINE compress #-}
 compress
