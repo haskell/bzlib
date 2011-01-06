@@ -17,10 +17,14 @@ description:     This package provides a pure interface for compressing and
                  provides access to the full bzip2 feature set.
 stability:       provisional
 build-type:      Simple
-cabal-version:   >= 1.2.1
+cabal-version:   >= 1.6
 extra-source-files: cbits/bzlib_private.h cbits/LICENSE
                     -- demo programs:
                     bzip2.hs bunzip2.hs
+
+source-repository head
+  type: darcs
+  location: http://code.haskell.org/bzlib/
 
 library
   exposed-modules: Codec.Compression.BZip,
