@@ -94,6 +94,12 @@ typedef
 #   define BZ_EXTERN extern
 #endif
 
+/* Using WINAPI causes the function to be exported using the 'stdcall'
+ * calling convention. We'd rather use the ordinary calling convention
+ * so we redefine BZ_API to do nothing.
+ */
+#undef BZ_API
+#define BZ_API(func) func
 
 /*-- Core (low-level) library functions --*/
 
