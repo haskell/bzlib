@@ -19,7 +19,7 @@ build-type:      Simple
 cabal-version:   >= 1.6
 extra-source-files: cbits/bzlib_private.h cbits/LICENSE
                     -- demo programs:
-                    bzip2.hs bunzip2.hs
+                    examples/bzip2.hs examples/bunzip2.hs
 
 source-repository head
   type: darcs
