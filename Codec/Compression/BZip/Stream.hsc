@@ -69,7 +69,8 @@ import Foreign.C
 import Data.ByteString.Internal (nullForeignPtr)
 import System.IO.Unsafe (unsafeInterleaveIO)
 import System.IO (hPutStrLn, stderr)
-import Control.Monad (liftM)
+import Control.Applicative (Applicative(..))
+import Control.Monad (liftM, ap)
 import Control.Exception (assert)
 
 import Prelude hiding (length)
@@ -219,6 +220,13 @@ newtype Stream a = BZ {
               ,ForeignPtr Word8
               ,Int, Int, a)
   }
+
+instance Functor Stream where
+    fmap = liftM
+
+instance Applicative Stream where
+    pure  = return
+    (<*>) = ap
 
 instance Monad Stream where
   (>>=)  = thenZ
