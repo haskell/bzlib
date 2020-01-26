@@ -53,7 +53,7 @@ data CompressParams = CompressParams {
   compressBlockSize   :: Stream.BlockSize,
   compressWorkFactor  :: Stream.WorkFactor,
   compressBufferSize  :: Int
-}
+} deriving (Show)
 
 -- | The full set of parameters for decompression. The defaults are
 -- 'defaultDecompressParams'.
@@ -77,7 +77,7 @@ data CompressParams = CompressParams {
 data DecompressParams = DecompressParams {
   decompressMemoryLevel :: Stream.MemoryLevel,
   decompressBufferSize  :: Int
-}
+} deriving (Show)
 
 -- | The default set of parameters for compression. This is typically used with
 -- the @compressWith@ function with specific paramaters overridden.
