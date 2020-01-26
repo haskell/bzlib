@@ -74,7 +74,7 @@ import Control.Monad (liftM, ap)
 import qualified Control.Monad.Fail as Fail
 import Control.Exception (assert)
 
-import Prelude (Int, IO, Bool, String, Functor, Monad(..), return, (>>), (>>=), fmap, (.), ($), fromIntegral, error, otherwise, (<=), (&&), (>=), show, (++), (+), (==), (-), (>))
+import Prelude (Int, IO, Bool, String, Functor, Monad(..), Show(..), return, (>>), (>>=), fmap, (.), ($), fromIntegral, error, otherwise, (<=), (&&), (>=), show, (++), (+), (==), (-), (>))
 
 #include "bzlib.h"
 
@@ -448,6 +448,7 @@ fromAction Finish = #{const BZ_FINISH}
 data BlockSize =
     DefaultBlockSize -- ^ The default block size is also the maximum.
   | BlockSize Int    -- ^ A specific block size between 1 and 9.
+  deriving (Show)
 
 fromBlockSize :: BlockSize -> CInt
 fromBlockSize DefaultBlockSize = 9
@@ -466,6 +467,7 @@ data MemoryLevel =
   | MinMemoryLevel     -- ^ Use minimum memory during decompression. This
                        --   halves the memory needed but also halves the
                        --   decompression speed.
+  deriving (Show)
 
 fromMemoryLevel :: MemoryLevel -> CInt
 fromMemoryLevel DefaultMemoryLevel = 0
@@ -491,6 +493,7 @@ fromMemoryLevel MinMemoryLevel     = 1
 data WorkFactor =
     DefaultWorkFactor -- ^ The default work factor is 30.
   | WorkFactor Int    -- ^ Allowable values range from 1 to 250 inclusive.
+  deriving (Show)
 
 fromWorkFactor :: WorkFactor -> CInt
 fromWorkFactor DefaultWorkFactor = 0
