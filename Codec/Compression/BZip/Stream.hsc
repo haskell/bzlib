@@ -15,8 +15,9 @@ module Codec.Compression.BZip.Stream (
 
   -- * The Zlib state monad
   Stream,
-  run,
-  unsafeInterleave,
+  State,
+  mkState,
+  runStream,
   unsafeLiftIO,
   finalise,
 
@@ -35,11 +36,13 @@ module Codec.Compression.BZip.Stream (
   decompress,
   Status(..),
   Action(..),
+  ErrorCode(..),
 
   -- * Buffer management
   -- ** Input buffer
   pushInputBuffer,
   inputBufferEmpty,
+  popRemainingInputBuffer,
 
   -- ** Output buffer
   pushOutputBuffer,
@@ -56,22 +59,30 @@ module Codec.Compression.BZip.Stream (
   ) where
 
 import Foreign
-         ( Word8, Ptr, nullPtr, plusPtr, peekByteOff, pokeByteOff, mallocBytes
-         , ForeignPtr, FinalizerPtr, newForeignPtr_, addForeignPtrFinalizer
-         , finalizeForeignPtr, withForeignPtr, touchForeignPtr )
+         ( Word8, Ptr, nullPtr, plusPtr, peekByteOff, pokeByteOff
+         , ForeignPtr, FinalizerPtr, mallocForeignPtrBytes, addForeignPtrFinalizer
+         , finalizeForeignPtr, withForeignPtr, touchForeignPtr, minusPtr )
 #if __GLASGOW_HASKELL__ >= 702
 import Foreign.ForeignPtr.Unsafe ( unsafeForeignPtrToPtr )
-import System.IO.Unsafe          ( unsafePerformIO )
 #else
-import Foreign ( unsafeForeignPtrToPtr, unsafePerformIO )
+import Foreign ( unsafeForeignPtrToPtr )
 #endif
 import Foreign.C
 import Data.ByteString.Internal (nullForeignPtr)
-import System.IO.Unsafe (unsafeInterleaveIO)
 import System.IO (hPutStrLn, stderr)
 import Control.Applicative (Applicative(..))
 import Control.Monad (liftM, ap)
 import qualified Control.Monad.Fail as Fail
+#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 708
+import Control.Monad.ST.Strict
+#else
+import Control.Monad.ST.Strict hiding (unsafeIOToST)
+#endif
+import Control.Monad.ST.Unsafe
+#else
+import Control.Monad.ST.Strict
+#endif
 import Control.Exception (assert)
 
 import Prelude (Int, IO, Bool, String, Functor, Monad(..), Show(..), return, (>>), (>>=), fmap, (.), ($), fromIntegral, error, otherwise, (<=), (&&), (>=), show, (++), (+), (==), (-), (>))
@@ -103,6 +114,20 @@ pushInputBuffer inBuf' offset length = do
 
 inputBufferEmpty :: Stream Bool
 inputBufferEmpty = getInAvail >>= return . (==0)
+
+
+popRemainingInputBuffer :: Stream (ForeignPtr Word8, Int, Int)
+popRemainingInputBuffer = do
+
+  inBuf    <- getInBuf
+  inNext   <- getInNext
+  inAvail  <- getInAvail
+
+  -- there really should be something to pop, otherwise it's silly
+  assert (inAvail > 0) $ return ()
+  setInAvail 0
+
+  return (inBuf, inNext `minusPtr` unsafeForeignPtrToPtr inBuf, inAvail)
 
 
 pushOutputBuffer :: ForeignPtr Word8 -> Int -> Int -> Stream ()
@@ -266,34 +291,36 @@ thenZ_ (BZ m) f =
 failZ :: String -> Stream a
 failZ msg = BZ (\_ _ _ _ _ -> Fail.fail ("Codec.Compression.BZip: " ++ msg))
 
-{-# NOINLINE run #-}
-run :: Stream a -> a
-run (BZ m) = unsafePerformIO $ do
-  ptr <- mallocBytes (#{const sizeof(bz_stream)})
-  #{poke bz_stream, bzalloc}   ptr nullPtr
-  #{poke bz_stream, bzfree}    ptr nullPtr
-  #{poke bz_stream, opaque}    ptr nullPtr
-  #{poke bz_stream, next_in}   ptr nullPtr
-  #{poke bz_stream, next_out}  ptr nullPtr
-  #{poke bz_stream, avail_in}  ptr (0 :: CUInt)
-  #{poke bz_stream, avail_out} ptr (0 :: CUInt)
-  stream <- newForeignPtr_ ptr
-  (_,_,_,_,a) <- m stream nullForeignPtr nullForeignPtr 0 0
-  return a
+data State s = State !(ForeignPtr StreamState)
+                     !(ForeignPtr Word8)
+                     !(ForeignPtr Word8)
+       {-# UNPACK #-} !Int
+       {-# UNPACK #-} !Int
+
+mkState :: ST s (State s)
+mkState = unsafeIOToST $ do
+  stream <- mallocForeignPtrBytes (#{const sizeof(bz_stream)})
+  withForeignPtr stream $ \ptr -> do
+    #{poke bz_stream, bzalloc}   ptr nullPtr
+    #{poke bz_stream, bzfree}    ptr nullPtr
+    #{poke bz_stream, opaque}    ptr nullPtr
+    #{poke bz_stream, next_in}   ptr nullPtr
+    #{poke bz_stream, next_out}  ptr nullPtr
+    #{poke bz_stream, avail_in}  ptr (0 :: CUInt)
+    #{poke bz_stream, avail_out} ptr (0 :: CUInt)
+  return (State stream nullForeignPtr nullForeignPtr 0 0)
+
+runStream :: Stream a -> State s -> ST s (a, State s)
+runStream (BZ m) (State stream inBuf outBuf outOffset outLength) =
+  unsafeIOToST $
+    m stream inBuf outBuf outOffset outLength >>=
+      \(inBuf', outBuf', outOffset', outLength', a) ->
+        return (a, State stream inBuf' outBuf' outOffset' outLength')
 
 unsafeLiftIO :: IO a -> Stream a
 unsafeLiftIO m = BZ $ \_stream inBuf outBuf outOffset outLength -> do
   a <- m
   return (inBuf, outBuf, outOffset, outLength, a)
-
--- It's unsafe because we discard the values here, so if you mutate anything
--- between running this and forcing the result then you'll get an inconsistent
--- stream state.
-unsafeInterleave :: Stream a -> Stream a
-unsafeInterleave (BZ m) = BZ $ \stream inBuf outBuf outOffset outLength -> do
-  res <- unsafeInterleaveIO (m stream inBuf outBuf outOffset outLength)
-  let select (_,_,_,_,a) = a
-  return (inBuf, outBuf, outOffset, outLength, select res)
 
 getStreamState :: Stream (ForeignPtr StreamState)
 getStreamState = BZ $ \stream inBuf outBuf outOffset outLength -> do
@@ -382,30 +409,39 @@ data Status =
     Ok         -- ^ The requested action was completed successfully.
   | StreamEnd  -- ^ Compression of data was completed, or the logical stream
                --   end was detected during decompression.
+  | Error ErrorCode String
 
-toStatus :: CInt -> Status
-toStatus (#{const BZ_OK})         = Ok
-toStatus (#{const BZ_RUN_OK})     = Ok
-toStatus (#{const BZ_FLUSH_OK})   = Ok
-toStatus (#{const BZ_FINISH_OK})  = Ok
-toStatus (#{const BZ_STREAM_END}) = StreamEnd
-toStatus other = error ("unexpected bzip2 status: " ++ show other)
+data ErrorCode =
+    SequenceError
+  | ParamError
+  | MemoryError
+  | DataError
+  | DataErrorMagic
+  | ConfigError
+  | Unexpected
+
+toStatus :: CInt -> Stream Status
+toStatus errno = case errno of
+  (#{const BZ_OK})         -> return Ok
+  (#{const BZ_RUN_OK})     -> return Ok
+  (#{const BZ_FLUSH_OK})   -> return Ok
+  (#{const BZ_FINISH_OK})  -> return Ok
+  (#{const BZ_STREAM_END}) -> return StreamEnd
+  (#{const BZ_SEQUENCE_ERROR})   -> err SequenceError  "incorrect sequence of calls"
+  (#{const BZ_PARAM_ERROR})      -> err ParamError     "incorrect parameter"
+  (#{const BZ_MEM_ERROR})        -> err MemoryError    "not enough memory"
+  (#{const BZ_DATA_ERROR})       -> err DataError      "compressed data stream is corrupt"
+  (#{const BZ_DATA_ERROR_MAGIC}) -> err DataErrorMagic "data stream is not a bzip2 file"
+  (#{const BZ_CONFIG_ERROR})     -> err ConfigError    "configuration error in bzip2 lib"
+  other                          -> err Unexpected
+                                      ("unexpected bzip2 status: " ++ show other)
+ where
+  err errCode msg = return (Error errCode msg)
 
 failIfError :: CInt -> Stream ()
-failIfError errno
-  | errno >= 0 = return ()
-  | otherwise  = Fail.fail (getErrorMessage errno)
-
-getErrorMessage :: CInt -> String
-getErrorMessage errno = case errno of
- #{const BZ_SEQUENCE_ERROR}   -> "incorrect sequence of calls"
- #{const BZ_PARAM_ERROR}      -> "incorrect parameter"
- #{const BZ_MEM_ERROR}        -> "not enough memory"
- #{const BZ_DATA_ERROR}       -> "compressed data stream is corrupt"
- #{const BZ_DATA_ERROR_MAGIC} -> "data stream is not a bzip2 file"
- #{const BZ_CONFIG_ERROR}     -> "configuration error in bzip2 lib"
- other                        -> "unknown or impossible error code: "
-                              ++ show other
+failIfError errno = toStatus errno >>= \status -> case status of
+  (Error _ msg) -> Fail.fail msg
+  _             -> return ()
 
 data Action =
     Run
@@ -574,15 +610,13 @@ decompress_ :: Stream Status
 decompress_ = do
   err <- withStreamState $ \bzstream ->
     bzDecompress bzstream
-  failIfError err
-  return (toStatus err)
+  toStatus err
 
 compress_ :: Action -> Stream Status
 compress_ action = do
   err <- withStreamState $ \bzstream ->
     bzCompress bzstream (fromAction action)
-  failIfError err
-  return (toStatus err)
+  toStatus err
 
 -- | This never needs to be used as the stream's resources will be released
 -- automatically when no longer needed, however this can be used to release
