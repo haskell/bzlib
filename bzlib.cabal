@@ -16,7 +16,7 @@ description:     This package provides a pure interface for compressing and
                  tasks and for the few cases where more control is needed it
                  provides access to the full bzip2 feature set.
 build-type:      Simple
-cabal-version:   >= 1.6
+cabal-version:   >= 1.8
 extra-source-files: cbits/bzlib_private.h cbits/LICENSE
                     -- demo programs:
                     examples/bzip2.hs examples/bunzip2.hs
@@ -45,3 +45,18 @@ library
                    cbits/randtable.c
     include-dirs:  cbits
     install-includes: bzlib.h
+
+test-suite tests
+  type: exitcode-stdio-1.0
+  main-is:         Test.hs
+  other-modules:   Utils,
+                   Test.Codec.Compression.BZip.Internal,
+                   Test.Codec.Compression.BZip.Stream
+  hs-source-dirs:  test
+  default-language: Haskell2010
+  build-depends:   base, bytestring, bzlib,
+                   QuickCheck       == 2.*,
+                   tasty            >= 0.8 && < 1.3,
+                   tasty-quickcheck >= 0.8 && < 0.11,
+                   tasty-hunit      >= 0.8 && < 0.11
+  ghc-options:     -Wall
