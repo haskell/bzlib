@@ -68,7 +68,7 @@ import Codec.Compression.BZip.Internal hiding (compress, decompress)
 --
 -- * if the compressed stream is corrupted
 --
--- * if the compressed stream ends permaturely
+-- * if the compressed stream ends prematurely
 --
 -- Note that the decompression is performed /lazily/. Errors in the data stream
 -- may not be detected until the end of the stream is demanded (since it is

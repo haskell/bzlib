@@ -45,7 +45,7 @@ import Codec.Compression.BZip.Stream (Stream)
 -- The 'compressBufferSize' is the size of the first output buffer containing
 -- the compressed data. If you know an approximate upper bound on the size of
 -- the compressed data then setting this parameter can save memory. The default
--- compression output buffer size is @16k@. If your extimate is wrong it does
+-- compression output buffer size is @16k@. If your estimate is wrong it does
 -- not matter too much, the default buffer size will be used for the remaining
 -- chunks.
 --
@@ -67,7 +67,7 @@ data CompressParams = CompressParams {
 --
 -- One particular use case for setting the 'decompressBufferSize' is if you
 -- know the exact size of the decompressed data and want to produce a strict
--- 'Data.ByteString.ByteString'. The compression and deccompression functions
+-- 'Data.ByteString.ByteString'. The compression and decompression functions
 -- use lazy 'Data.ByteString.Lazy.ByteString's but if you set the
 -- 'decompressBufferSize' correctly then you can generate a lazy
 -- 'Data.ByteString.Lazy.ByteString' with exactly one chunk, which can be
@@ -80,7 +80,7 @@ data DecompressParams = DecompressParams {
 }
 
 -- | The default set of parameters for compression. This is typically used with
--- the @compressWith@ function with specific paramaters overridden.
+-- the @compressWith@ function with specific parameters overridden.
 --
 defaultCompressParams :: CompressParams
 defaultCompressParams = CompressParams {
@@ -90,7 +90,7 @@ defaultCompressParams = CompressParams {
 }
 
 -- | The default set of parameters for decompression. This is typically used with
--- the @compressWith@ function with specific paramaters overridden.
+-- the @compressWith@ function with specific parameters overridden.
 --
 defaultDecompressParams :: DecompressParams
 defaultDecompressParams = DecompressParams {
