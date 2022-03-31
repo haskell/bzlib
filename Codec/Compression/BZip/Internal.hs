@@ -62,7 +62,7 @@ data CompressParams = CompressParams {
 -- containing the uncompressed data. If you know an exact or approximate upper
 -- bound on the size of the decompressed data then setting this parameter can
 -- save memory. The default decompression output buffer size is @32k@. If your
--- extimate is wrong it does not matter too much, the default buffer size will
+-- estimate is wrong it does not matter too much, the default buffer size will
 -- be used for the remaining chunks.
 --
 -- One particular use case for setting the 'decompressBufferSize' is if you
@@ -132,7 +132,7 @@ compress (CompressParams blockSize workFactor initChunkSize) input =
   fillBuffers outChunkSize inChunks = do
     Stream.consistencyCheck
 
-    -- in this state there are two possabilities:
+    -- in this state there are two possibilities:
     --   * no outbut buffer space is available
     --       - in which case we must make more available
     --   * no input buffer is available
@@ -217,7 +217,7 @@ decompress (DecompressParams memLevel initChunkSize) input =
               -> Stream [S.ByteString]
   fillBuffers outChunkSize inChunks = do
 
-    -- in this state there are two possabilities:
+    -- in this state there are two possibilities:
     --   * no outbut buffer space is available
     --       - in which case we must make more available
     --   * no input buffer is available
