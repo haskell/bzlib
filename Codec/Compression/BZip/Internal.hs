@@ -270,7 +270,7 @@ decompress (DecompressParams memLevel initChunkSize) input =
 
       Stream.StreamEnd -> do
         -- Note that there may be input bytes still available if the stream
-        -- is embeded in some other data stream. Here we just silently discard
+        -- is embedded in some other data stream. Here we just silently discard
         -- any trailing data.
         outputBufferBytesAvailable <- Stream.outputBufferBytesAvailable
         if outputBufferBytesAvailable > 0
