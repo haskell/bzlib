@@ -30,7 +30,7 @@ module Codec.Compression.BZip.Stream (
   MemoryLevel(..),
   Verbosity(..),
 
-  -- * The buisness
+  -- * The business
   compress,
   decompress,
   Status(..),
@@ -456,7 +456,7 @@ fromBlockSize (BlockSize n)
 --
 data MemoryLevel =
     DefaultMemoryLevel -- ^ The default.
-  | MinMemoryLevel     -- ^ Use minimum memory dusing decompression. This
+  | MinMemoryLevel     -- ^ Use minimum memory during decompression. This
                        --   halves the memory needed but also halves the
                        --   decompression speed.
 
