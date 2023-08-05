@@ -71,9 +71,10 @@ import System.IO.Unsafe (unsafeInterleaveIO)
 import System.IO (hPutStrLn, stderr)
 import Control.Applicative (Applicative(..))
 import Control.Monad (liftM, ap)
+import qualified Control.Monad.Fail as Fail
 import Control.Exception (assert)
 
-import Prelude hiding (length)
+import Prelude (Int, IO, Bool, String, Functor, Monad(..), return, (>>), (>>=), fmap, (.), ($), fromIntegral, error, otherwise, (<=), (&&), (>=), show, (++), (+), (==), (-), (>))
 
 #include "bzlib.h"
 
@@ -225,14 +226,20 @@ instance Functor Stream where
     fmap = liftM
 
 instance Applicative Stream where
-    pure  = return
+    pure  = returnZ
     (<*>) = ap
+    (*>) = thenZ_
 
 instance Monad Stream where
   (>>=)  = thenZ
 --  m >>= f = (m `thenZ` \a -> consistencyCheck `thenZ_` returnZ a) `thenZ` f
-  (>>)   = thenZ_
-  return = returnZ
+  (>>)   = (*>)
+  return = pure
+#if !MIN_VERSION_base(4,13,0)
+  fail = Fail.fail
+#endif
+
+instance Fail.MonadFail Stream where
   fail   = (finalise >>) . failZ
 
 returnZ :: a -> Stream a
@@ -257,7 +264,7 @@ thenZ_ (BZ m) f =
 {-# INLINE thenZ_ #-}
 
 failZ :: String -> Stream a
-failZ msg = BZ (\_ _ _ _ _ -> fail ("Codec.Compression.BZip: " ++ msg))
+failZ msg = BZ (\_ _ _ _ _ -> Fail.fail ("Codec.Compression.BZip: " ++ msg))
 
 {-# NOINLINE run #-}
 run :: Stream a -> a
@@ -387,7 +394,7 @@ toStatus other = error ("unexpected bzip2 status: " ++ show other)
 failIfError :: CInt -> Stream ()
 failIfError errno
   | errno >= 0 = return ()
-  | otherwise  = fail (getErrorMessage errno)
+  | otherwise  = Fail.fail (getErrorMessage errno)
 
 getErrorMessage :: CInt -> String
 getErrorMessage errno = case errno of
