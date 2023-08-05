@@ -16,7 +16,7 @@ description:     This package provides a pure interface for compressing and
                  tasks and for the few cases where more control is needed it
                  provides access to the full bzip2 feature set.
 build-type:      Simple
-cabal-version:   >= 1.6
+cabal-version:   >= 1.8
 extra-source-files: cbits/bzlib_private.h cbits/LICENSE
                     -- demo programs:
                     examples/bzip2.hs examples/bunzip2.hs
@@ -24,8 +24,8 @@ extra-source-files: cbits/bzlib_private.h cbits/LICENSE
 tested-with: GHC==9.6.2, GHC==9.4.5, GHC==9.2.8, GHC==9.0.2, GHC==8.10.7, GHC==8.8.4, GHC==8.6.5, GHC==8.4.4, GHC==8.2.2, GHC==8.0.2, GHC==7.10.3, GHC==7.8.4, GHC==7.6.3, GHC==7.4.2, GHC==7.2.2, GHC==7.0.4
 
 source-repository head
-  type: darcs
-  location: http://code.haskell.org/bzlib/
+  type: git
+  location: https://github.com/haskell/bzlib.git
 
 library
   exposed-modules: Codec.Compression.BZip,
@@ -33,7 +33,9 @@ library
   other-modules:   Codec.Compression.BZip.Stream
   extensions:      CPP, ForeignFunctionInterface
   build-depends:   base >= 3 && < 5,
-                   bytestring == 0.9.* || == 0.10.*
+                   bytestring >= 0.9 && < 0.13
+  if impl(ghc < 8.0)
+    build-depends: fail < 5
   includes:        bzlib.h
   ghc-options:     -Wall
   if !os(windows)
