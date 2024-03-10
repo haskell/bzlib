@@ -41,7 +41,7 @@ library
     -- Normally we use the the standard system bz2 lib:
     extra-libraries: bz2
   else
-    build-depends:   bzip2-clib
+    build-depends:   bzip2-clib < 1.1
 
 test-suite tests
   type: exitcode-stdio-1.0
