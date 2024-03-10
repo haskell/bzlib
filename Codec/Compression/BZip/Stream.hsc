@@ -637,7 +637,7 @@ foreign import ccall unsafe "bzlib.h BZ2_bzDecompressInit"
 foreign import ccall unsafe "bzlib.h BZ2_bzDecompress"
   bzDecompress :: StreamState -> IO CInt
 
-foreign import ccall unsafe "bzlib.h &BZ2_bzDecompressEnd"
+foreign import ccall unsafe "hs-bzlib.h &_hs_bzlib_bzDecompressEnd"
   bzDecompressEnd :: FinalizerPtr StreamState
 
 
@@ -647,5 +647,5 @@ foreign import ccall unsafe "bzlib.h BZ2_bzCompressInit"
 foreign import ccall unsafe "bzlib.h BZ2_bzCompress"
   bzCompress :: StreamState -> CInt -> IO CInt
 
-foreign import ccall unsafe "bzlib.h &BZ2_bzCompressEnd"
+foreign import ccall unsafe "hs-bzlib.h &_hs_bzlib_bzCompressEnd"
   bzCompressEnd :: FinalizerPtr StreamState
