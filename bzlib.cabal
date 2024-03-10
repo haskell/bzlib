@@ -24,6 +24,12 @@ extra-source-files: cbits/bzlib_private.h cbits/LICENSE
 
 tested-with: GHC==9.8.2, GHC==9.6.4, GHC==9.4.8, GHC==9.2.8, GHC==9.0.2, GHC==8.10.7, GHC==8.8.4, GHC==8.6.5, GHC==8.4.4, GHC==8.2.2, GHC==8.0.2, GHC==7.10.3, GHC==7.8.4, GHC==7.6.3, GHC==7.4.2, GHC==7.2.2, GHC==7.0.4
 
+flag system-bzlib
+    description:
+        Use system bzlib rather than the bundled sources
+    default: True
+    manual: True
+
 source-repository head
   type: git
   location: https://github.com/haskell/bzlib.git
@@ -39,11 +45,11 @@ library
     build-depends: fail < 5
   includes:        bzlib.h
   ghc-options:     -Wall
-  if !os(windows)
-    -- Normally we use the the standard system bz2 lib:
-    extra-libraries: bz2
+
+  if flag(system-bzlib)
+      extra-libraries: bz2
   else
-    build-depends:   bzip2-clib
+      build-depends: bzip2-clib
 
 test-suite tests
   type: exitcode-stdio-1.0
