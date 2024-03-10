@@ -1,0 +1,97 @@
+name: other
+on:
+  - push
+  - pull_request
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [windows-latest, macOS-latest]
+        ghc: ['7.10', '8.0', '8.2', '8.4', '9.2', 'latest']
+    steps:
+    - uses: actions/checkout@v4
+    - uses: haskell-actions/setup@v2
+      id: setup-haskell-cabal
+      with:
+        ghc-version: ${{ matrix.ghc }}
+        cabal-update: true
+    - uses: actions/cache@v3
+      name: Cache cabal stuff
+      with:
+        path: |
+          ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
+          dist-newstyle
+        key: ${{ runner.os }}-ghc-${{ steps.setup-haskell-cabal.outputs.ghc-version }}
+    - name: Build
+      run: |
+        cabal sdist -z -o .
+        cabal get bzlib-*.tar.gz
+        cd bzlib-*/
+        cabal build
+    - name: Test
+      run: |
+        cd bzlib-*/
+        cabal test
+    - name: Haddock
+      if: matrix.ghc != '7.10' && matrix.ghc != '8.0'
+      run: |
+        cd bzlib-*/
+        cabal haddock
+
+  wasi:
+    runs-on: ubuntu-latest
+    env:
+      GHC_WASM_META_REV: c0aa3bb7d88bb6ec809210e17658dd1ed64ba66c
+    strategy:
+      matrix:
+        ghc: ['9.6', '9.8']
+      fail-fast: false
+    steps:
+    - name: setup-ghc-wasm32-wasi
+      run: |
+        cd $(mktemp -d)
+        curl -L https://gitlab.haskell.org/ghc/ghc-wasm-meta/-/archive/$GHC_WASM_META_REV/ghc-wasm-meta.tar.gz | tar xz --strip-components=1
+        ./setup.sh
+        ~/.ghc-wasm/add_to_github_path.sh
+      env:
+        FLAVOUR: ${{ matrix.ghc }}
+    - uses: actions/checkout@v4
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/.ghc-wasm/.cabal/store
+        key: wasi-${{ runner.os }}-${{ env.GHC_WASM_META_REV }}-flavour-${{ matrix.ghc }}-${{ github.sha }}
+        restore-keys: |
+          wasi-${{ runner.os }}-${{ env.GHC_WASM_META_REV }}-flavour-${{ matrix.ghc }}-
+    - name: Build
+      run: |
+        mv cabal.project.wasi cabal.project.local
+        wasm32-wasi-cabal build --enable-tests
+        wasm32-wasi-cabal list-bin test:tests
+    - name: Test
+      run: |
+        wasmtime.sh $(wasm32-wasi-cabal list-bin test:tests)
+
+  i386:
+    runs-on: ubuntu-latest
+    container:
+      image: i386/ubuntu:bionic
+    steps:
+    - name: Install
+      run: |
+        apt-get update -y
+        apt-get install -y autoconf build-essential libbz2-dev libgmp-dev curl libncurses5 libtinfo5 libncurses5-dev libtinfo-dev
+        curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_INSTALL_NO_STACK=1 sh
+    - uses: actions/checkout@v1
+    - name: Test
+      run: |
+        source ~/.ghcup/env
+        cabal update
+        cabal test
