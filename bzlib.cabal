@@ -18,7 +18,7 @@ description:     This package provides a pure interface for compressing and
                  provides access to the full bzip2 feature set.
 build-type:      Simple
 cabal-version:   >= 1.10
-extra-source-files: cbits/bzlib_private.h cbits/LICENSE
+extra-source-files:
                     -- demo programs:
                     examples/bzip2.hs examples/bunzip2.hs
 
