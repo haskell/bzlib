@@ -14,7 +14,14 @@ jobs:
       fail-fast: true
       matrix:
         os: [windows-latest, macOS-latest]
-        ghc: ['7.10', '8.0', '8.2', '8.4', '9.2', 'latest']
+        ghc: ['8.4', '9.2', 'latest']
+        include:
+          - os: macOS-latest
+            ghc: '7.10'
+          - os: macOS-latest
+            ghc: '8.0'
+          - os: macOS-latest
+            ghc: '8.2'
     steps:
     - uses: actions/checkout@v4
     - uses: haskell-actions/setup@v2
