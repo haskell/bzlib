@@ -38,7 +38,6 @@ library
     build-depends: fail < 5
   if os(windows)
     build-depends: base >= 4.11
-  includes:        bzlib.h
   ghc-options:     -Wall
   if !(os(windows) || impl(ghcjs) || os(ghcjs) || arch(wasm32))
     -- Normally we use the the standard system bz2 lib:
