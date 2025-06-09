@@ -62,27 +62,15 @@ import Foreign
          ( Word8, Ptr, nullPtr, plusPtr, peekByteOff, pokeByteOff
          , ForeignPtr, FinalizerPtr, mallocForeignPtrBytes, addForeignPtrFinalizer
          , finalizeForeignPtr, withForeignPtr, touchForeignPtr, minusPtr )
-#if __GLASGOW_HASKELL__ >= 702
 import Foreign.ForeignPtr.Unsafe ( unsafeForeignPtrToPtr )
-#else
-import Foreign ( unsafeForeignPtrToPtr )
-#endif
 import Foreign.C
 import Data.ByteString.Internal (nullForeignPtr)
 import System.IO (hPutStrLn, stderr)
 import Control.Applicative (Applicative(..))
 import Control.Monad (liftM, ap)
 import qualified Control.Monad.Fail as Fail
-#if __GLASGOW_HASKELL__ >= 702
-#if __GLASGOW_HASKELL__ >= 708
 import Control.Monad.ST.Strict
-#else
-import Control.Monad.ST.Strict hiding (unsafeIOToST)
-#endif
 import Control.Monad.ST.Unsafe
-#else
-import Control.Monad.ST.Strict
-#endif
 import Control.Exception (assert)
 
 import Prelude (Int, IO, Bool, String, Functor, Monad(..), Show(..), return, (>>), (>>=), fmap, (.), ($), fromIntegral, error, otherwise, (<=), (&&), (>=), show, (++), (+), (==), (-), (>))
@@ -257,12 +245,8 @@ instance Applicative Stream where
 
 instance Monad Stream where
   (>>=)  = thenZ
---  m >>= f = (m `thenZ` \a -> consistencyCheck `thenZ_` returnZ a) `thenZ` f
   (>>)   = (*>)
   return = pure
-#if !MIN_VERSION_base(4,13,0)
-  fail = Fail.fail
-#endif
 
 instance Fail.MonadFail Stream where
   fail   = (finalise >>) . failZ

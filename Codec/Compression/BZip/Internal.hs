@@ -46,11 +46,7 @@ import Control.Monad (when)
 import Control.Exception (Exception, throw, assert)
 import Control.Monad.ST.Lazy hiding (stToIO)
 import Control.Monad.ST.Strict (stToIO)
-#if __GLASGOW_HASKELL__ >= 702
 import qualified Control.Monad.ST.Unsafe as Unsafe (unsafeIOToST)
-#else
-import qualified Control.Monad.ST.Strict as Unsafe (unsafeIOToST)
-#endif
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Internal as L
 import qualified Data.ByteString as S
