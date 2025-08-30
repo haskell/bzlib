@@ -56,6 +56,6 @@ test-suite tests
   build-depends:   base, bytestring, bzlib,
                    QuickCheck       == 2.*,
                    tasty            >= 0.8 && < 1.6,
-                   tasty-quickcheck >= 0.8 && < 0.11,
+                   tasty-quickcheck >= 0.8 && < 0.12,
                    tasty-hunit      >= 0.8 && < 0.11
   ghc-options:     -Wall
