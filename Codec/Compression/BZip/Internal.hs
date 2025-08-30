@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, Rank2Types, DeriveDataTypeable #-}
+{-# LANGUAGE CPP, Rank2Types #-}
 -----------------------------------------------------------------------------
 -- |
 -- Copyright   :  (c) 2006-2008 Duncan Coutts
@@ -51,7 +51,6 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Internal as L
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Internal as S
-import Data.Typeable (Typeable)
 import GHC.IO (noDuplicate)
 
 import qualified Codec.Compression.BZip.Stream as Stream
@@ -310,7 +309,6 @@ data DecompressStream m =
 data DecompressError =
      TruncatedInput
    | DataFormatError String
-   deriving (Typeable)
 
 instance Show DecompressError where
   show TruncatedInput     = modprefix "premature end of compressed data stream"
