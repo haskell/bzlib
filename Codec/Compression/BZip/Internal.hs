@@ -26,6 +26,7 @@ module Codec.Compression.BZip.Internal (
 
   -- ** Incremental decompression
   DecompressStream(..),
+  DecompressError(..),
   decompressST,
   decompressIO,
   foldDecompressStream,
