@@ -1,3 +1,8 @@
+## 0.5.2.1
+
+* Add `DecompressError` to export list of `Codec.Compression.BZip.Internal`.
+* Copy some documentation from `zlib`.
+
 ## 0.5.2.0
 
 * Fix CVE-2019-12900 by updating C sources to 1.0.8.
