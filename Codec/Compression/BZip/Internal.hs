@@ -234,7 +234,7 @@ foldCompressStream
   -- second argument is already embedded in the
   -- monad. This is typically a lambda of the form
   -- 
-  -- > \chunk next -> L.chunk chunk <$> next
+  -- > \chunk next -> Data.ByteString.Lazy.chunk chunk <$> next
   -- 
   -- or
   --
@@ -243,10 +243,10 @@ foldCompressStream
   -> m a
   -- ^ The base value of the fold. If the output
   -- is itself a 'L.ByteString', this can just
-  -- be (return 'L.empty').
+  -- be (@return@ 'L.empty').
   -> CompressStream m 
   -- ^ The input stream. Typically, this is
-  -- ('compressIO' params) or ('compressST' params),
+  -- ('compressIO' @params@) or ('compressST' @params@),
   -- depending on the choice of monad.
   -> m a
 foldCompressStream input output end = fold
@@ -278,7 +278,7 @@ foldCompressStreamWithInput
   -- this is just 'L.empty' or 'mempty'.
   -> (forall s. CompressStream (ST s))
   -- ^ The compression stream. Typically, this is
-  -- ('compressST' params).
+  -- ('compressST' @params@).
   -> L.ByteString
   -- ^ The input lazy 'L.ByteString'.
   -> a
@@ -474,7 +474,7 @@ foldDecompressStream
   -- second argument is already embedded in the
   -- monad. This is typically a lambda of the form
   -- 
-  -- > \chunk next -> L.chunk chunk <$> next
+  -- > \chunk next -> Data.ByteString.Lazy.Internal.chunk chunk <$> next
   -- 
   -- or
   --
@@ -487,11 +487,11 @@ foldDecompressStream
   -- is the base value of the right-fold operation.
   -> (DecompressError -> m a)
   -- ^ How to handle errors. Typically, this is
-  -- 'throw', but it can be e.g. (return . 'Left')
+  -- 'throw', but it can be e.g. (@return@ . 'Left')
   -- if the output value is wrapped in 'Either'.
   -> DecompressStream m 
   -- ^ The input stream. Typically, this is
-  -- ('decompressIO' params) or ('decompressST' params),
+  -- ('decompressIO' @params@) or ('decompressST' @params@),
   -- depending on the choice of monad.
   -> m a
 foldDecompressStream input output end err = fold
@@ -519,7 +519,7 @@ foldDecompressStream input output end err = fold
 -- > import qualified Data.ByteString.Lazy          as L
 -- > import qualified Data.ByteString.Lazy.Internal as L
 -- >
--- > compressWith params = foldDecompressStreamWithInput (L.chunk) (const L.empty) throw (decompressST params)
+-- > decompressWith params = foldDecompressStreamWithInput (L.chunk) (const L.empty) throw (decompressST params)
 --
 foldDecompressStreamWithInput 
   :: (S.ByteString -> a -> a)
@@ -533,7 +533,7 @@ foldDecompressStreamWithInput
   -- error, just use 'throw'.
   -> (forall s. DecompressStream (ST s))
   -- ^ The decompression stream. Typically, this is
-  -- ('decompressST' params).  
+  -- ('decompressST' @params@).  
   -> L.ByteString
   -- ^ The input lazy `L.ByteString`.
   -> a
@@ -559,7 +559,7 @@ foldDecompressStreamWithInput chunk end err = \s lbs ->
 -- | Decompress a data stream provided as a lazy 'L.ByteString'.
 --
 -- It will throw an exception if any error is encountered in the input data.
--- If you need more control over error handling then use one the incremental
+-- If you need more control over error handling then use one of the incremental
 -- versions, 'decompressST' or 'decompressIO'.
 --
 decompress   :: DecompressParams -> L.ByteString -> L.ByteString
