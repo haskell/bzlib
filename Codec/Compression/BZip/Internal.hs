@@ -223,24 +223,31 @@ data CompressStream m =
 --
 foldCompressStream 
   :: Monad m
-  -- | How to obtain more input to be compressed.
+  => ((S.ByteString -> m a) -> m a)
+  -- ^ How to obtain more input to be compressed.
   -- Typically, this is a lambda of the form
   -- 
   -- > \consume -> do { bs <- obtainData ; consume bs }
   -- 
-  => ((S.ByteString -> m a) -> m a)
-  -- | The right-folding operation. Note that the 
-  -- second argument is already embedded in the
-  -- monad.
   -> (S.ByteString -> m a -> m a)
-  -- | The base value of the fold. If the output
+  -- ^ The right-folding operation. Note that the 
+  -- second argument is already embedded in the
+  -- monad. This is typically a lambda of the form
+  -- 
+  -- > \chunk next -> L.chunk chunk <$> next
+  -- 
+  -- or
+  --
+  -- > \chunk next -> do { writeData chunk ; next}
+  -- 
+  -> m a
+  -- ^ The base value of the fold. If the output
   -- is itself a 'L.ByteString', this can just
   -- be (return 'L.empty').
-  -> m a
-  -- | The input stream. Typically, this is
+  -> CompressStream m 
+  -- ^ The input stream. Typically, this is
   -- ('compressIO' params) or ('compressST' params),
   -- depending on the choice of monad.
-  -> CompressStream m 
   -> m a
 foldCompressStream input output end = fold
   where
@@ -263,17 +270,17 @@ foldCompressStream input output end = fold
 -- > toChunks = foldCompressStreamWithInput (:) []
 --
 foldCompressStreamWithInput 
-  -- | The right-folding operation, used to create output.
-  -- In typical usage, this is 'L.chunk'.
   :: (S.ByteString -> a -> a)
-  -- | The base value of the fold. In typical usage,
-  -- this is just 'L.empty' or 'mempty'.
+  -- ^ The right-folding operation, used to create output.
+  -- In typical usage, this is 'L.chunk'.
   -> a
-  -- | The compression stream. Typically, this is
-  -- ('compressST' params).
+  -- ^ The base value of the fold. In typical usage,
+  -- this is just 'L.empty' or 'mempty'.
   -> (forall s. CompressStream (ST s))
-  -- | The input lazy 'L.ByteString'.
+  -- ^ The compression stream. Typically, this is
+  -- ('compressST' params).
   -> L.ByteString
+  -- ^ The input lazy 'L.ByteString'.
   -> a
 foldCompressStreamWithInput chunk end = \s lbs ->
     runST (fold s (L.toChunks lbs))
@@ -431,6 +438,7 @@ data DecompressStream m =
 --
 -- This can be 'show'n to give a human readable error message.
 --
+-- @since 0.5.3.0
 data DecompressError =
      -- | The compressed data stream ended prematurely. This may happen if the
      -- input data stream was truncated.
@@ -455,29 +463,36 @@ instance Exception DecompressError
 --
 foldDecompressStream 
   :: Monad m
-  -- | How to obtain more input for the decompression
+  => ((S.ByteString -> m a) -> m a)
+  -- ^ How to obtain more input for the decompression
   -- stream. Typically, this is a lambda of the form
   -- 
   -- > \consume -> do { bs <- obtainData ; consume bs }
   -- 
-  => ((S.ByteString -> m a) -> m a)
-  -- | The right-folding operation. Note that the 
-  -- second argument is already embedded in the
-  -- monad.
   -> (S.ByteString -> m a -> m a)
-  -- | How to handle any trailing data after
+  -- ^ The right-folding operation. Note that the 
+  -- second argument is already embedded in the
+  -- monad. This is typically a lambda of the form
+  -- 
+  -- > \chunk next -> L.chunk chunk <$> next
+  -- 
+  -- or
+  --
+  -- > \chunk next -> do { writeData chunk ; next}
+  -- 
+  -> (S.ByteString -> m a)
+  -- ^ How to handle any trailing data after
   -- decompression is completed. To ignore it,
   -- just pass @const (return bas)@, where @bas@
   -- is the base value of the right-fold operation.
-  -> (S.ByteString -> m a)
-  -- | How to handle errors. Typically, this is
+  -> (DecompressError -> m a)
+  -- ^ How to handle errors. Typically, this is
   -- 'throw', but it can be e.g. (return . 'Left')
   -- if the output value is wrapped in 'Either'.
-  -> (DecompressError -> m a)
-  -- | The input stream. Typically, this is
+  -> DecompressStream m 
+  -- ^ The input stream. Typically, this is
   -- ('decompressIO' params) or ('decompressST' params),
   -- depending on the choice of monad.
-  -> DecompressStream m 
   -> m a
 foldDecompressStream input output end err = fold
   where
@@ -507,20 +522,20 @@ foldDecompressStream input output end err = fold
 -- > compressWith params = foldDecompressStreamWithInput (L.chunk) (const L.empty) throw (decompressST params)
 --
 foldDecompressStreamWithInput 
-  -- | The right-folding operation, used to create output.
-  -- In typical usage, this is 'L.chunk'.
   :: (S.ByteString -> a -> a)
-  -- | How to handle any trailing data; typically, this
-  -- is discarded. 
+  -- ^ The right-folding operation, used to create output.
+  -- In typical usage, this is 'L.chunk'.
   -> (L.ByteString -> a)
-  -- | How to handle any errors. To raise this as an
-  -- error, just use 'throw'.
+  -- ^ How to handle any trailing data; typically, this
+  -- is discarded. 
   -> (DecompressError -> a)
-  -- | The decompression stream. Typically, this is
-  -- ('decompressST' params).
+  -- ^ How to handle any errors. To raise this as an
+  -- error, just use 'throw'.
   -> (forall s. DecompressStream (ST s))
-  -- | The input lazy `L.ByteString`.
+  -- ^ The decompression stream. Typically, this is
+  -- ('decompressST' params).  
   -> L.ByteString
+  -- ^ The input lazy `L.ByteString`.
   -> a
 foldDecompressStreamWithInput chunk end err = \s lbs ->
     runST (fold s (L.toChunks lbs))
