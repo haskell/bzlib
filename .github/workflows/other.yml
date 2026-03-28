@@ -19,13 +19,13 @@ jobs:
           - os: windows-latest
             ghc: '8.4'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
       with:
         ghc-version: ${{ matrix.ghc }}
         cabal-update: true
-    - uses: actions/cache@v3
+    - uses: actions/cache@v5
       name: Cache cabal stuff
       with:
         path: |
@@ -50,22 +50,22 @@ jobs:
   wasi:
     runs-on: ubuntu-latest
     env:
-      GHC_WASM_META_REV: c0aa3bb7d88bb6ec809210e17658dd1ed64ba66c
+      GHC_WASM_META_REV: 7927129e42bcd6a54b9e06e26455803fa4878261
     strategy:
       matrix:
-        ghc: ['9.6', '9.8']
+        ghc: ['9.6', '9.8', '9.10', '9.12']
       fail-fast: false
     steps:
     - name: setup-ghc-wasm32-wasi
       run: |
         cd $(mktemp -d)
-        curl -L https://gitlab.haskell.org/ghc/ghc-wasm-meta/-/archive/$GHC_WASM_META_REV/ghc-wasm-meta.tar.gz | tar xz --strip-components=1
+        curl -L https://gitlab.haskell.org/haskell-wasm/ghc-wasm-meta/-/archive/$GHC_WASM_META_REV/ghc-wasm-meta.tar.gz | tar xz --strip-components=1
         ./setup.sh
         ~/.ghc-wasm/add_to_github_path.sh
       env:
         FLAVOUR: ${{ matrix.ghc }}
-    - uses: actions/checkout@v4
-    - uses: actions/cache@v3
+    - uses: actions/checkout@v7
+    - uses: actions/cache@v5
       with:
         path: |
           ~/.ghc-wasm/.cabal/store
@@ -89,7 +89,7 @@ jobs:
       run: |
         apt-get update -y
         apt-get install -y autoconf build-essential libbz2-dev libgmp-dev curl libncurses5 libtinfo5 libncurses5-dev libtinfo-dev
-        curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_INSTALL_NO_STACK=1 sh
+        curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_INSTALL_NO_STACK=1 BOOTSTRAP_HASKELL_GHC_VERSION=9.6.7 sh
     - uses: actions/checkout@v1
     - name: Test
       run: |
