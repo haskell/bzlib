@@ -221,30 +221,30 @@ data CompressStream m =
 -- One way to look at this is that it runs the stream, using callback functions
 -- for the three stream events.
 --
-foldCompressStream 
+foldCompressStream
   :: Monad m
   => ((S.ByteString -> m a) -> m a)
   -- ^ How to obtain more input to be compressed.
   -- Typically, this is a lambda of the form
-  -- 
+  --
   -- > \consume -> do { bs <- obtainData ; consume bs }
-  -- 
+  --
   -> (S.ByteString -> m a -> m a)
-  -- ^ The right-folding operation. Note that the 
+  -- ^ The right-folding operation. Note that the
   -- second argument is already embedded in the
   -- monad. This is typically a lambda of the form
-  -- 
+  --
   -- > \chunk next -> Data.ByteString.Lazy.chunk chunk <$> next
-  -- 
+  --
   -- or
   --
   -- > \chunk next -> do { writeData chunk ; next}
-  -- 
+  --
   -> m a
   -- ^ The base value of the fold. If the output
   -- is itself a 'L.ByteString', this can just
   -- be (@return@ 'L.empty').
-  -> CompressStream m 
+  -> CompressStream m
   -- ^ The input stream. Typically, this is
   -- ('compressIO' @params@) or ('compressST' @params@),
   -- depending on the choice of monad.
@@ -269,7 +269,7 @@ foldCompressStream input output end = fold
 --
 -- > toChunks = foldCompressStreamWithInput (:) []
 --
-foldCompressStreamWithInput 
+foldCompressStreamWithInput
   :: (S.ByteString -> a -> a)
   -- ^ The right-folding operation, used to create output.
   -- In typical usage, this is 'L.chunk'.
@@ -461,25 +461,25 @@ instance Exception DecompressError
 -- One way to look at this is that it runs the stream, using callback functions
 -- for the four stream events.
 --
-foldDecompressStream 
+foldDecompressStream
   :: Monad m
   => ((S.ByteString -> m a) -> m a)
   -- ^ How to obtain more input for the decompression
   -- stream. Typically, this is a lambda of the form
-  -- 
+  --
   -- > \consume -> do { bs <- obtainData ; consume bs }
-  -- 
+  --
   -> (S.ByteString -> m a -> m a)
-  -- ^ The right-folding operation. Note that the 
+  -- ^ The right-folding operation. Note that the
   -- second argument is already embedded in the
   -- monad. This is typically a lambda of the form
-  -- 
+  --
   -- > \chunk next -> Data.ByteString.Lazy.Internal.chunk chunk <$> next
-  -- 
+  --
   -- or
   --
   -- > \chunk next -> do { writeData chunk ; next}
-  -- 
+  --
   -> (S.ByteString -> m a)
   -- ^ How to handle any trailing data after
   -- decompression is completed. To ignore it,
@@ -489,7 +489,7 @@ foldDecompressStream
   -- ^ How to handle errors. Typically, this is
   -- 'throw', but it can be e.g. (@return@ . 'Left')
   -- if the output value is wrapped in 'Either'.
-  -> DecompressStream m 
+  -> DecompressStream m
   -- ^ The input stream. Typically, this is
   -- ('decompressIO' @params@) or ('decompressST' @params@),
   -- depending on the choice of monad.
@@ -521,19 +521,19 @@ foldDecompressStream input output end err = fold
 -- >
 -- > decompressWith params = foldDecompressStreamWithInput (L.chunk) (const L.empty) throw (decompressST params)
 --
-foldDecompressStreamWithInput 
+foldDecompressStreamWithInput
   :: (S.ByteString -> a -> a)
   -- ^ The right-folding operation, used to create output.
   -- In typical usage, this is 'L.chunk'.
   -> (L.ByteString -> a)
   -- ^ How to handle any trailing data; typically, this
-  -- is discarded. 
+  -- is discarded.
   -> (DecompressError -> a)
   -- ^ How to handle any errors. To raise this as an
   -- error, just use 'throw'.
   -> (forall s. DecompressStream (ST s))
   -- ^ The decompression stream. Typically, this is
-  -- ('decompressST' @params@).  
+  -- ('decompressST' @params@).
   -> L.ByteString
   -- ^ The input lazy `L.ByteString`.
   -> a
@@ -663,6 +663,7 @@ decompressStream (DecompressParams memLevel initChunkSize) =
 
       Stream.Error code msg -> case code of
           Stream.DataError -> finish (DecompressStreamError (DataFormatError msg))
+          Stream.DataErrorMagic -> finish (DecompressStreamError (DataFormatError msg))
           _                -> fail msg
 
   finish end = do

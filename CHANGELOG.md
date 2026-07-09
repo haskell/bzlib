@@ -3,6 +3,7 @@
 * Add `DecompressError` to export list of `Codec.Compression.BZip.Internal`.
 * Copy some documentation from `zlib`.
 * Add argument documentation to functions in `Codec.Compression.BZip.Internal`.
+* Treat `DataErrorMagic` same as DataError by converting them to `DecompressStreamError`.
 
 ## 0.5.2.0
 
